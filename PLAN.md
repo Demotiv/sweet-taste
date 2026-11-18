@@ -331,6 +331,16 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 с правильными `TargetPath` и `WorkingDirectory`; `tools\Update.cmd` обновляет
 0.6.0 → 0.6.1, создаёт папку `-old-`, сохраняет `tools\` и запускает новую версию.
 
+Мобильный клиент, шаг 1 готов: вью `recipe_costs` создана в облаке
+(`supabase/005_recipe_costs.sql`, применяется одной частью `supabase/parts/005_part1.sql`).
+Вью считает себестоимость и цену рецепта той же формулой, что `RecipeService`:
+средняя цена по закупкам → стоимость партии → цена за единицу с наценкой и
+округлением вверх (для «г» до копейки, для «кг»/«шт» до рубля).
+`security_invoker = true`, грант только `authenticated`.
+Сверка с десктопом сошлась до копейки: `Тест` — `cost_per_unit = 7.6041666…`,
+`price_per_unit = 16`; `Тортик` — `cost_per_unit = 31.3613333…`, `price_per_unit = 32`.
+Следующий шаг — каркас PWA в `sweet-taste-web`.
+
 ## 4.1. Технические заметки
 
 - Запуск: `dotnet run --project src/SweetTaste.Desktop`
@@ -571,6 +581,23 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   (`sync-session.bin`), а локальная база не привязана к аккаунту: в `app_settings`
   нет ни `user_id`, ни email (`SettingsService.cs:15-19`). Поэтому «Загрузить из облака»
   под другим аккаунтом заменит локальные данные его данными.
+- **Вью `recipe_costs` — единственный источник цены для читающих клиентов.**
+  `supabase/005_recipe_costs.sql`, применяется одной частью `supabase/parts/005_part1.sql`
+  (текст совпадает байт в байт). Формула повторяет `RecipeService` шаг в шаг:
+  `avg_price = sum(total_price_kopecks) / sum(quantity_milli)` по закупкам
+  (`having sum(quantity_milli) > 0`), `batch_cost = sum(amount_milli * avg_price)`,
+  `cost_per_unit = batch_cost / output_quantity_milli`,
+  `price_per_unit = ceil(cost_per_unit * (1 + markup_percent/100) * k) / k`,
+  где `k = 100` для `output_unit = 'г'` и `1` для `кг`/`шт` — это повторяет
+  `RecipeUnits.RoundPricePerUnit`. Ингредиент без закупок даёт `avg_price = null`
+  и вклад 0 (`coalesce(ap.avg_price, 0)`), как в `GetAveragePrices`.
+  Вью объявлена `with (security_invoker = true)`: RLS таблиц применяется как обычно,
+  собственной политики у вью нет и быть не должно — она обошла бы RLS.
+  Гранты: `revoke all … from public, anon` + `grant select … to authenticated`.
+  Сверка с десктопом на реальных данных сошлась до копейки:
+  `Тест` — `batch_cost = 24333.3333…`, `cost_per_unit = 7.6041666…`, `price_per_unit = 16`;
+  `Тортик` — `batch_cost = 78403.3333…`, `cost_per_unit = 31.3613333…`, `price_per_unit = 32`.
+  Дублировать формулу в TypeScript нельзя: два источника истины разойдутся на округлении.
 
 ## 5. Открытые вопросы
 
@@ -1003,6 +1030,13 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   наценку заказа). Работа не начата.
 - 19.11.2026 — веб вынесен в отдельный репозиторий `Demotiv/sweet-taste-web`:
   код с десктопом не делится, общие только SQL-файлы в `supabase/`.
+- 19.11.2026 — вью `recipe_costs` написана (`supabase/005_recipe_costs.sql`,
+  одна часть `supabase/parts/005_part1.sql`) и применена в панели Supabase.
+  Формула повторяет `RecipeService` шаг в шаг, `security_invoker = true`,
+  грант только `authenticated`. Сверка с десктопом сошлась до копейки:
+  `Тест` — `cost_per_unit = 7.6041666…`, `price_per_unit = 16`;
+  `Тортик` — `cost_per_unit = 31.3613333…`, `price_per_unit = 32`.
+  Следующий шаг — каркас PWA в `sweet-taste-web`.
 
 ## 9. Идеи на будущее
 
