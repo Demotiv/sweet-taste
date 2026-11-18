@@ -19,6 +19,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
     private readonly OrderService _orders;
     private readonly SupabaseAuthClient _auth;
     private readonly ISessionStore _sessions;
+    private readonly SyncService _sync;
     private Action? _confirmAction;
 
     /// <summary>Сообщает главному окну, что заказы изменились (напоминание о выдачах).</summary>
@@ -33,12 +34,14 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         SettingsService settings,
         OrderService orders,
         SupabaseAuthClient auth,
-        ISessionStore sessions)
+        ISessionStore sessions,
+        SyncService sync)
     {
         _settings = settings;
         _orders = orders;
         _auth = auth;
         _sessions = sessions;
+        _sync = sync;
 
         _selectedTheme = ThemeName(settings.Theme);
         _selectedRetention = settings.BackupRetentionDays;
@@ -142,9 +145,18 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
     [ObservableProperty]
     private bool _hasSyncMessage;
 
+    [ObservableProperty]
+    private bool _isSyncConfirmOpen;
+
+    [ObservableProperty]
+    private string _syncConfirmText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSyncRestartNeeded;
+
     public string BackupFolder => _settings.BackupDirectory;
 
-    public bool IsFormOpen => IsConfirmOpen;
+    public bool IsFormOpen => IsConfirmOpen || IsSyncConfirmOpen;
 
     public void CancelForm()
     {
@@ -152,6 +164,11 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         {
             IsConfirmOpen = false;
             _confirmAction = null;
+        }
+
+        if (IsSyncConfirmOpen)
+        {
+            IsSyncConfirmOpen = false;
         }
     }
 
@@ -356,6 +373,163 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
 
         SignedInEmail = session.Email;
         IsSignedIn = true;
+    }
+
+    /// <summary>Выгружает локальные данные в облако по кнопке.</summary>
+    [RelayCommand]
+    private async Task UploadToCloudAsync()
+    {
+        if (IsSyncBusy)
+        {
+            return;
+        }
+
+        var session = await EnsureSessionAsync();
+        if (session is null)
+        {
+            return;
+        }
+
+        IsSyncBusy = true;
+        SyncError = null;
+        HasSyncMessage = false;
+
+        try
+        {
+            var snapshot = new SnapshotExporter(_settings.Database).Export(DateTimeOffset.UtcNow);
+            var result = await _sync.UploadAtomicAsync(snapshot, session);
+
+            SyncMessage = $"Данные выгружены в облако: {result.TotalRows} " +
+                          $"{Formats.Plural(result.TotalRows, "строка", "строки", "строк")}.";
+            HasSyncMessage = true;
+        }
+        catch (SyncException ex)
+        {
+            SyncError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            SyncError = "Не удалось выгрузить данные: " + ex.Message;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    /// <summary>Спрашивает подтверждение перед заменой локальных данных данными из облака.</summary>
+    [RelayCommand]
+    private void RequestDownloadFromCloud()
+    {
+        if (IsSyncBusy)
+        {
+            return;
+        }
+
+        SyncConfirmText = "Заменить данные на этом компьютере данными из облака? " +
+                          "Текущая база будет сохранена в резервную копию, но в приложении " +
+                          "появятся данные из облака. После замены приложение нужно перезапустить.";
+        IsSyncConfirmOpen = true;
+    }
+
+    [RelayCommand]
+    private void CancelSyncConfirm() => IsSyncConfirmOpen = false;
+
+    /// <summary>Заменяет локальные данные снапшотом из облака.</summary>
+    [RelayCommand]
+    private async Task ConfirmDownloadFromCloudAsync()
+    {
+        IsSyncConfirmOpen = false;
+
+        if (IsSyncBusy)
+        {
+            return;
+        }
+
+        var session = await EnsureSessionAsync();
+        if (session is null)
+        {
+            return;
+        }
+
+        IsSyncBusy = true;
+        SyncError = null;
+        HasSyncMessage = false;
+
+        try
+        {
+            var snapshot = await _sync.DownloadAsync(session);
+
+            if (snapshot.SchemaVersion != SnapshotReader.DatabaseSchemaVersion)
+            {
+                SyncError = $"Данные в облаке сохранены версией схемы {snapshot.SchemaVersion}, " +
+                            $"а приложение понимает {SnapshotReader.DatabaseSchemaVersion}. " +
+                            "Обновите приложение.";
+                return;
+            }
+
+            var backup = _settings.CreateBackupNow();
+            var imported = new SnapshotImporter(_settings.Database).Import(snapshot);
+
+            SyncMessage = backup is null
+                ? $"Данные из облака загружены: {imported} " +
+                  $"{Formats.Plural(imported, "строка", "строки", "строк")}. Перезапустите приложение."
+                : $"Данные из облака загружены: {imported} " +
+                  $"{Formats.Plural(imported, "строка", "строки", "строк")}. " +
+                  $"Прежняя база сохранена как {Path.GetFileName(backup)}. Перезапустите приложение.";
+            HasSyncMessage = true;
+            IsSyncRestartNeeded = true;
+            ReloadOrderCounts();
+            OrdersChanged?.Invoke();
+        }
+        catch (SyncException ex)
+        {
+            SyncError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            SyncError = "Не удалось загрузить данные из облака: " + ex.Message;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Возвращает действующую сессию, обновляя протухший токен.
+    /// Возвращает null, если сессии нет или обновить её не удалось.
+    /// </summary>
+    private async Task<AuthSession?> EnsureSessionAsync()
+    {
+        var session = _sessions.Load();
+        if (session is null)
+        {
+            SyncError = "Войдите в аккаунт, чтобы синхронизировать данные.";
+            HasSyncMessage = false;
+            return null;
+        }
+
+        if (!session.IsExpired(DateTimeOffset.UtcNow))
+        {
+            return session;
+        }
+
+        try
+        {
+            var refreshed = await _auth.RefreshAsync(session.RefreshToken);
+            _sessions.Save(refreshed);
+            return refreshed;
+        }
+        catch (AuthException ex)
+        {
+            _sessions.Clear();
+            IsSignedIn = false;
+            SignedInEmail = string.Empty;
+            SyncError = ex.Message;
+            HasSyncMessage = false;
+            return null;
+        }
     }
 
     [RelayCommand]

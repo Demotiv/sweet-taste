@@ -57,19 +57,37 @@
           </StackPanel>
 
           <!-- вход выполнен -->
-          <Grid ColumnDefinitions="*,Auto"
-                ColumnSpacing="12"
-                IsVisible="{Binding IsSignedIn}">
-            <StackPanel Spacing="2" VerticalAlignment="Center">
-              <TextBlock Classes="field-label" Text="Вы вошли как" />
-              <TextBlock Text="{Binding SignedInEmail}" FontSize="13" FontWeight="SemiBold" />
+          <StackPanel Spacing="12" IsVisible="{Binding IsSignedIn}">
+            <Grid ColumnDefinitions="*,Auto"
+                  ColumnSpacing="12">
+              <StackPanel Spacing="2" VerticalAlignment="Center">
+                <TextBlock Classes="field-label" Text="Вы вошли как" />
+                <TextBlock Text="{Binding SignedInEmail}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+              <Button Grid.Column="1"
+                      Theme="{StaticResource SecondaryButton}"
+                      Content="Выйти"
+                      Command="{Binding SignOutCommand}"
+                      VerticalAlignment="Center" />
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Theme="{StaticResource PrimaryButton}"
+                      Content="Выгрузить в облако"
+                      Command="{Binding UploadToCloudCommand}"
+                      IsEnabled="{Binding !IsSyncBusy}" />
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Загрузить из облака"
+                      Command="{Binding RequestDownloadFromCloudCommand}"
+                      IsEnabled="{Binding !IsSyncBusy}" />
             </StackPanel>
-            <Button Grid.Column="1"
-                    Theme="{StaticResource SecondaryButton}"
-                    Content="Выйти"
-                    Command="{Binding SignOutCommand}"
-                    VerticalAlignment="Center" />
-          </Grid>
+
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Content="Перезапустить приложение"
+                    Command="{Binding RestartApplicationCommand}"
+                    HorizontalAlignment="Left"
+                    IsVisible="{Binding IsSyncRestartNeeded}" />
+          </StackPanel>
 
           <TextBlock Classes="secondary"
                      Text="{Binding SyncMessage}"
@@ -338,6 +356,27 @@
                     Content="{Binding ConfirmButtonText}"
                     Background="{DynamicResource DangerBrush}"
                     Command="{Binding ConfirmDangerCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ================= подтверждение загрузки из облака ================= -->
+    <Grid IsVisible="{Binding IsSyncConfirmOpen}" Background="{DynamicResource DimBrush}">
+      <Border Classes="dialog"
+              Width="500"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="Заменить данные из облака" />
+          <TextBlock Classes="secondary" Text="{Binding SyncConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Отмена"
+                    Command="{Binding CancelSyncConfirmCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Content="Заменить"
+                    Command="{Binding ConfirmDownloadFromCloudCommand}" />
           </StackPanel>
         </StackPanel>
       </Border>

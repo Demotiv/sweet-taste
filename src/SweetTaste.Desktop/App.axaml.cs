@@ -53,7 +53,7 @@ public partial class App : Application
 
             var viewModel = new MainWindowViewModel(
                 service, recipes, orders, reports, packaging, settings, profile, customers, updates,
-                auth, sessions);
+                auth, sessions, sync);
 
             var window = new MainWindow
             {

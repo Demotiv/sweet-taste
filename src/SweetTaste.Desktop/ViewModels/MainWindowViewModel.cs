@@ -26,6 +26,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly UpdateService _updates;
     private readonly SupabaseAuthClient _auth;
     private readonly ISessionStore _sessions;
+    private readonly SyncService _sync;
     private AppUpdate? _availableUpdate;
     private UpdateVersion? _dismissedUpdateVersion;
     private bool _checkingUpdates;
@@ -106,7 +107,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         CustomerService customers,
         UpdateService updates,
         SupabaseAuthClient auth,
-        ISessionStore sessions)
+        ISessionStore sessions,
+        SyncService sync)
     {
         _inventory = inventory;
         _recipes = recipes;
@@ -119,6 +121,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _updates = updates;
         _auth = auth;
         _sessions = sessions;
+        _sync = sync;
         LoadProfile();
         LoadReminder();
         Navigate("ingredients");
@@ -334,7 +337,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             "recipes" => new RecipesViewModel(_recipes, _settings),
             "orders" => new OrdersViewModel(_orders, _recipes, _packaging, _customers),
             "reports" => new ReportsViewModel(_reports),
-            "settings" => new SettingsViewModel(_settings, _orders, _auth, _sessions),
+            "settings" => new SettingsViewModel(_settings, _orders, _auth, _sessions, _sync),
             "profile" => new ProfileViewModel(_profile, LoadProfile),
             "trash" => new TrashViewModel(_inventory, _recipes),
             _ => new IngredientsViewModel(_inventory, _packaging),

@@ -31,6 +31,9 @@ public sealed class SettingsService
 
     public string DatabasePath => _database.FilePath;
 
+    /// <summary>База приложения — нужна синхронизации для снапшота и импорта.</summary>
+    public AppDatabase Database => _database;
+
     public string BackupDirectory => _database.BackupDirectory;
 
     public string Theme

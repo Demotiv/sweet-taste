@@ -133,12 +133,53 @@ public sealed class SyncService : IDisposable
         };
     }
 
+    /// <summary>
+    /// Читает снапшот пользователя из облака. Требует действующей сессии.
+    /// </summary>
+    /// <remarks>
+    /// Чтение идёт по одной таблице в порядке <see cref="SnapshotRows.LoadOrder"/>.
+    /// RLS отдаёт только строки текущего пользователя, поэтому фильтр в запросе
+    /// не нужен. Пустое облако — это снапшот без строк, а не ошибка.
+    /// </remarks>
+    public async Task<SyncSnapshot> DownloadAsync(
+        AuthSession session,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        var tables = new Dictionary<string, IReadOnlyList<Dictionary<string, JsonElement>>>();
+        foreach (var table in SnapshotRows.LoadOrder)
+        {
+            tables[table] = await SelectAsync(table, session, cancellationToken);
+        }
+
+        return SnapshotReader.Read(tables, DateTimeOffset.UtcNow);
+    }
+
     public void Dispose()
     {
         if (_ownsHttp)
         {
             _http.Dispose();
         }
+    }
+
+    private async Task<IReadOnlyList<Dictionary<string, JsonElement>>> SelectAsync(
+        string table,
+        AuthSession session,
+        CancellationToken cancellationToken)
+    {
+        var request = CreateRequest(HttpMethod.Get, $"{_options.RestUrl}/{table}?select=*", session);
+
+        using var response = await _http.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw CreateError(response.StatusCode, body, table, "прочитать");
+        }
+
+        return SnapshotReader.ParseRows(body, table);
     }
 
     private async Task DeleteAllAsync(AuthSession session, CancellationToken cancellationToken)
@@ -242,7 +283,11 @@ public sealed class SyncService : IDisposable
 
         if (status == HttpStatusCode.Forbidden)
         {
-            return new SyncException("Сервер отклонил запись. Проверьте политики доступа.", table);
+            return new SyncException(
+                action == "прочитать"
+                    ? "Сервер отклонил чтение. Проверьте политики доступа."
+                    : "Сервер отклонил запись. Проверьте политики доступа.",
+                table);
         }
 
         var prefix = action is null
@@ -302,6 +347,11 @@ public sealed class SyncService : IDisposable
         {
             using var document = JsonDocument.Parse(body);
             var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
             if (root.TryGetProperty("message", out var message))
             {
                 return message.GetString();
