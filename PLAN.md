@@ -362,7 +362,7 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 оно требует переноса `recipes.photo` из `bytea` в Storage.
 
 Мобильный клиент, шаг 4 готов: сайт задеплоен на Cloudflare Pages —
-`https://sweet-taste-web.pages.dev` (проект `sweet-taste-web`, production-ветка `main`,
+`https://sweet-taste.pages.dev` (проект `sweet-taste`, production-ветка `main`,
 конфигурация в `wrangler.toml`). Проверено на реальном адресе: вход по email/паролю
 работает, список рецептов и карточка с составом показывают те же цифры, что локально
 (`Тест` — 16 ₽ / кг, `Тортик` — 32 ₽ / кг, состав 59 153,33 + 19 250,00 ₽).
@@ -1088,8 +1088,8 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   одна часть `supabase/parts/006_part1.sql`) применена в панели Supabase.
   Сверка сошлась: `Тортик` — 59 153,33 + 19 250,00 = 78 403,33 ₽ (`batch_cost`),
   `Тест` — 12 666,67 + 11 666,67 = 24 333,33 ₽. Фото — после переноса в Storage.
-- 19.11.2026 — сайт задеплоен на Cloudflare Pages: `https://sweet-taste-web.pages.dev`,
-  проект `sweet-taste-web`, production-ветка `main`, `wrangler.toml` в репозитории.
+- 19.11.2026 — сайт задеплоен на Cloudflare Pages: `https://sweet-taste.pages.dev`,
+  проект `sweet-taste`, production-ветка `main`, `wrangler.toml` в репозитории.
   Проверено на реальном адресе: вход, список рецептов и карточка с составом
   показывают те же цифры, что локально. Свой домен не подключён.
 
@@ -1184,8 +1184,8 @@ pricePerUnit  = ceil_по_единице( costPerUnit × (1 + markup/100) ) (Rec
    Готово, кроме деплоя: вход и экран рецептов работают локально.
 2. ~~Вью `recipe_costs` + экран рецептов с ценой.~~ Готово, сверка сошлась до копейки.
 3. ~~Карточка рецепта с составом.~~ Готово (вью `recipe_ingredient_costs`).
-4. ~~Деплой на Cloudflare Pages.~~ Готово: `https://sweet-taste-web.pages.dev`.
-5. Свой домен вместо `*.pages.dev` (режется в РФ).
+4. ~~Деплой на Cloudflare Pages.~~ Готово: `https://sweet-taste.pages.dev`.
+5. Свой домен вместо `*.pages.dev` (режется в РФ) — отложено, пока бесплатный адрес.
 6. Фото в Storage, карточки меню по категориям.
 7. PDF меню через `pdf-lib`.
 8. Расчёт заказа в PDF (упаковка, скидка).
