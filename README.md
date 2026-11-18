@@ -100,10 +100,10 @@ Windows · .NET 8 · Avalonia UI · SQLite.
 
 ## Альфа-сборка
 
-Готовый архив для Windows: `dist/SweetTaste-0.1.0-alpha.3-win-x64.zip` (рядом `.sha256`).
+Готовый архив для Windows: `dist/SweetTaste-0.1.0-alpha.4-win-x64.zip` (рядом `.sha256`).
 Установка не нужна, .NET 8 ставить не нужно — распакуйте и запустите `SweetTaste.exe`.
 
-Опубликованный релиз: [Sweet Taste 0.1.0-alpha.3](https://github.com/Demotiv/sweet-taste/releases/tag/v0.1.0-alpha.3).
+Опубликованный релиз: [Sweet Taste 0.1.0-alpha.4](https://github.com/Demotiv/sweet-taste/releases/tag/v0.1.0-alpha.4).
 
 - Ярлык на рабочий стол: `CreateShortcut.cmd` в папке программы.
 - Автоматическое обновление: при запуске проверяется GitHub. Если есть новая версия,
@@ -130,11 +130,11 @@ pwsh -File scripts/release.ps1
 ## Релизы на GitHub
 
 - При каждом push в `main` и в pull request GitHub Actions собирает проект и прогоняет тесты.
-- Релиз создаётся тегом версии. Например, для `0.1.0-alpha.3`:
+- Релиз создаётся тегом версии. Например, для `0.1.0-alpha.4`:
 
 ```powershell
-git tag v0.1.0-alpha.3
-git push origin v0.1.0-alpha.3
+git tag v0.1.0-alpha.4
+git push origin v0.1.0-alpha.4
 ```
 
 GitHub Actions соберёт self-contained ZIP, посчитает SHA-256 и опубликует релиз
