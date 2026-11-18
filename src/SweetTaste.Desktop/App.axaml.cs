@@ -6,6 +6,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using SweetTaste.Core.Services;
 using SweetTaste.Core.Storage;
+using SweetTaste.Desktop.Updates;
 using SweetTaste.Desktop.ViewModels;
 using SweetTaste.Desktop.Views;
 
@@ -35,14 +36,21 @@ public partial class App : Application
             var packaging = new PackagingService(database);
             var settings = new SettingsService(database);
             var profile = new ProfileService(database);
+            var updates = new UpdateService();
 
             ApplyTheme(settings.Theme);
 
+            var viewModel = new MainWindowViewModel(
+                service, recipes, orders, reports, packaging, settings, profile, customers, updates);
+
             var window = new MainWindow
             {
-                DataContext = new MainWindowViewModel(
-                    service, recipes, orders, reports, packaging, settings, profile, customers),
+                DataContext = viewModel,
             };
+
+            window.Opened += async (_, _) => await viewModel.CheckForUpdatesAsync();
+
+            desktop.Exit += (_, _) => updates.Dispose();
 
             window.ApplyUiScale(settings.UiScalePercent / 100.0);
             desktop.MainWindow = window;

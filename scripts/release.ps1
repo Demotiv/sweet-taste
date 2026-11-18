@@ -119,6 +119,7 @@ if (-not (Test-Path -LiteralPath $appExe)) {
 Copy-Item -LiteralPath (Join-Path $releaseFiles 'README.txt') -Destination $stageDir -Force
 Copy-Item -LiteralPath (Join-Path $releaseFiles 'Update.cmd') -Destination $stageDir -Force
 Copy-Item -LiteralPath (Join-Path $releaseFiles 'Update.ps1') -Destination $stageDir -Force
+Copy-Item -LiteralPath (Join-Path $releaseFiles 'AutoUpdate.ps1') -Destination $stageDir -Force
 Copy-Item -LiteralPath (Join-Path $releaseFiles 'CreateShortcut.cmd') -Destination $stageDir -Force
 
 $versionJson = [ordered]@{
@@ -146,6 +147,7 @@ function Set-ReleaseTextFile([string]$Path, [bool]$WithBom) {
 
 Set-ReleaseTextFile (Join-Path $stageDir 'README.txt') $true
 Set-ReleaseTextFile (Join-Path $stageDir 'Update.ps1') $true
+Set-ReleaseTextFile (Join-Path $stageDir 'AutoUpdate.ps1') $true
 Set-ReleaseTextFile (Join-Path $stageDir 'Update.cmd') $false
 Set-ReleaseTextFile (Join-Path $stageDir 'CreateShortcut.cmd') $false
 

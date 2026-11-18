@@ -218,14 +218,52 @@
     </Border>
 
     <!-- ====== раздел ====== -->
-    <Grid Grid.Column="1" RowDefinitions="Auto,*">
-      <Border IsVisible="{Binding HasStartupReminder}"
+    <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*">
+      <Border Grid.Row="0"
+              IsVisible="{Binding HasUpdate}"
+              Background="{DynamicResource SurfaceAltBrush}"
+              BorderBrush="{DynamicResource LineBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Padding="14,9"
+              Margin="30,18,30,0">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+          <StackPanel Spacing="2" VerticalAlignment="Center">
+            <TextBlock Text="{Binding UpdateTitle}"
+                       FontSize="12.5"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource AccentDarkBrush}" />
+            <TextBlock Text="{Binding UpdateMessage}"
+                       Classes="muted"
+                       TextWrapping="Wrap"
+                       MaxLines="2" />
+          </StackPanel>
+          <Button Grid.Column="1"
+                  Theme="{StaticResource SecondaryButton}"
+                  Content="Позже"
+                  Padding="10,4"
+                  FontSize="11"
+                  Command="{Binding DismissUpdateCommand}"
+                  IsEnabled="{Binding !IsUpdateBusy}" />
+          <Button Grid.Column="2"
+                  Theme="{StaticResource PrimaryButton}"
+                  Content="{Binding UpdateActionText}"
+                  Padding="12,4"
+                  FontSize="11"
+                  Command="{Binding InstallUpdateCommand}"
+                  IsVisible="{Binding UpdateCanInstall}"
+                  IsEnabled="{Binding !IsUpdateBusy}" />
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="1"
+              IsVisible="{Binding HasStartupReminder}"
               Background="{DynamicResource AccentSoftBrush}"
               BorderBrush="{DynamicResource AccentSoftHoverBrush}"
               BorderThickness="1"
               CornerRadius="10"
               Padding="14,9"
-              Margin="30,18,30,0">
+              Margin="30,10,30,0">
         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
           <TextBlock Text="{Binding StartupReminder}"
                      FontSize="12.5"
@@ -252,7 +290,7 @@
           </Button>
         </Grid>
       </Border>
-      <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+      <ContentControl Grid.Row="2" Content="{Binding CurrentPage}" />
     </Grid>
   </Grid>
   </LayoutTransformControl>

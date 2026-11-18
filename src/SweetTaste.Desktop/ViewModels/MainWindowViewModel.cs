@@ -1,9 +1,13 @@
 using System.IO;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SweetTaste.Core.Domain;
 using SweetTaste.Core.Services;
+using SweetTaste.Core.Updates;
+using SweetTaste.Desktop.Updates;
 
 namespace SweetTaste.Desktop.ViewModels;
 
@@ -18,6 +22,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly SettingsService _settings;
     private readonly ProfileService _profile;
     private readonly CustomerService _customers;
+    private readonly UpdateService _updates;
+    private AppUpdate? _availableUpdate;
+    private UpdateVersion? _dismissedUpdateVersion;
+    private bool _checkingUpdates;
 
     [ObservableProperty]
     private ViewModelBase? _currentPage;
@@ -61,6 +69,24 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasStartupReminder;
 
+    [ObservableProperty]
+    private bool _hasUpdate;
+
+    [ObservableProperty]
+    private string _updateTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _updateMessage = string.Empty;
+
+    [ObservableProperty]
+    private string _updateActionText = "Обновить";
+
+    [ObservableProperty]
+    private bool _updateCanInstall = true;
+
+    [ObservableProperty]
+    private bool _isUpdateBusy;
+
     private string _reminderSignature = string.Empty;
     private string _dismissedReminderSignature = string.Empty;
 
@@ -74,7 +100,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         PackagingService packaging,
         SettingsService settings,
         ProfileService profile,
-        CustomerService customers)
+        CustomerService customers,
+        UpdateService updates)
     {
         _inventory = inventory;
         _recipes = recipes;
@@ -84,6 +111,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _settings = settings;
         _profile = profile;
         _customers = customers;
+        _updates = updates;
         LoadProfile();
         LoadReminder();
         Navigate("ingredients");
@@ -117,6 +145,153 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         _dismissedReminderSignature = _reminderSignature;
         HasStartupReminder = false;
+    }
+
+    public async Task CheckForUpdatesAsync(bool manual = false)
+    {
+        if (_checkingUpdates || IsUpdateBusy)
+        {
+            return;
+        }
+
+        if (!_updates.CanSelfUpdate)
+        {
+            if (manual)
+            {
+                ShowUpdateNotice(
+                    "Обновления недоступны",
+                    "Автообновление работает только в собранной версии приложения из ZIP.",
+                    canInstall: false);
+            }
+
+            return;
+        }
+
+        _checkingUpdates = true;
+
+        try
+        {
+            var update = await _updates.GetLatestAsync();
+
+            if (update is null)
+            {
+                if (manual)
+                {
+                    ShowUpdateNotice("Обновления", "Не удалось найти подходящий релиз на GitHub.", canInstall: false);
+                }
+
+                return;
+            }
+
+            if (!UpdateVersion.TryParse(AppInfo.Version, out var current) ||
+                update.Version.CompareTo(current) <= 0)
+            {
+                if (manual)
+                {
+                    ShowUpdateNotice(
+                        "Обновления",
+                        $"Установлена последняя версия {AppInfo.Version}.",
+                        canInstall: false);
+                }
+
+                return;
+            }
+
+            if (!manual &&
+                _dismissedUpdateVersion is { } dismissed &&
+                update.Version.CompareTo(dismissed) == 0)
+            {
+                return;
+            }
+
+            _availableUpdate = update;
+            UpdateTitle = $"Доступна версия {update.Version}";
+            UpdateMessage = $"Сейчас установлена {AppInfo.Version}. " +
+                            "Архив скачается с GitHub, приложение закроется и запустится уже новой версией.";
+            UpdateActionText = "Обновить";
+            UpdateCanInstall = true;
+            IsUpdateBusy = false;
+            HasUpdate = true;
+        }
+        catch (Exception ex)
+        {
+            if (manual)
+            {
+                ShowUpdateNotice("Не удалось проверить обновления", ex.Message, canInstall: false);
+            }
+        }
+        finally
+        {
+            _checkingUpdates = false;
+        }
+    }
+
+    [RelayCommand]
+    private void DismissUpdate()
+    {
+        if (IsUpdateBusy)
+        {
+            return;
+        }
+
+        _dismissedUpdateVersion = _availableUpdate?.Version;
+        HasUpdate = false;
+    }
+
+    [RelayCommand]
+    private async Task InstallUpdateAsync()
+    {
+        if (_availableUpdate is not { } update || IsUpdateBusy)
+        {
+            return;
+        }
+
+        IsUpdateBusy = true;
+        UpdateCanInstall = false;
+        UpdateTitle = $"Скачивание версии {update.Version}";
+        UpdateMessage = "0%";
+        UpdateActionText = "Скачивание…";
+
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                UpdateMessage = $"{value * 100:0}%";
+            });
+
+            var downloaded = await _updates.DownloadAsync(update, progress);
+
+            UpdateTitle = "Установка обновления";
+            UpdateMessage = "Архив проверен. Приложение сейчас закроется и запустится заново.";
+            UpdateActionText = "Установка…";
+
+            await Task.Delay(600);
+            _updates.StartUpdater(DatabasePath, downloaded, update);
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown();
+            }
+        }
+        catch (Exception ex)
+        {
+            IsUpdateBusy = false;
+            UpdateCanInstall = true;
+            UpdateActionText = "Повторить";
+            UpdateTitle = "Не удалось обновить";
+            UpdateMessage = ex.Message;
+            HasUpdate = true;
+        }
+    }
+
+    private void ShowUpdateNotice(string title, string message, bool canInstall)
+    {
+        UpdateTitle = title;
+        UpdateMessage = message;
+        UpdateActionText = canInstall ? "Обновить" : "Закрыть";
+        UpdateCanInstall = canInstall;
+        IsUpdateBusy = false;
+        HasUpdate = true;
     }
 
     private void LoadReminder()
