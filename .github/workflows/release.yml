@@ -62,8 +62,7 @@ jobs:
                   $zip,
                   $hash,
                   '--verify-tag',
-                  '--title', "Sweet Taste $version",
-                  '--generate-notes'
+                  '--title', "Sweet Taste $version"
               )
 
               if ($version -match '-') {
@@ -71,9 +70,9 @@ jobs:
               }
 
               if (Test-Path -LiteralPath $notes) {
-                  # Заменяем --generate-notes на собранные вручную заметки.
-                  $arguments = @($arguments | Where-Object { $_ -ne '--generate-notes' })
                   $arguments += @('--notes-file', $notes)
+              } else {
+                  $arguments += '--generate-notes'
               }
 
               gh @arguments
