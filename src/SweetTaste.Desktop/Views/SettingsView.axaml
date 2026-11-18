@@ -5,6 +5,13 @@
              x:Class="SweetTaste.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
 
+  <UserControl.Styles>
+    <!-- Красная кнопка подтверждения: у PrimaryButton фон задан темой, класс его перекрывает. -->
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+    </Style>
+  </UserControl.Styles>
+
   <Grid>
     <ScrollViewer>
       <StackPanel Margin="30,26,30,26" Spacing="18">
@@ -74,11 +81,15 @@
             <StackPanel Orientation="Horizontal" Spacing="10">
               <Button Theme="{StaticResource PrimaryButton}"
                       Content="Выгрузить в облако"
-                      Command="{Binding UploadToCloudCommand}"
+                      Command="{Binding RequestUploadToCloudCommand}"
                       IsEnabled="{Binding !IsSyncBusy}" />
               <Button Theme="{StaticResource SecondaryButton}"
                       Content="Загрузить из облака"
                       Command="{Binding RequestDownloadFromCloudCommand}"
+                      IsEnabled="{Binding !IsSyncBusy}" />
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="История облака"
+                      Command="{Binding OpenArchiveCommand}"
                       IsEnabled="{Binding !IsSyncBusy}" />
             </StackPanel>
 
@@ -87,6 +98,14 @@
                     Command="{Binding RestartApplicationCommand}"
                     HorizontalAlignment="Left"
                     IsVisible="{Binding IsSyncRestartNeeded}" />
+
+            <StackPanel Spacing="2" IsVisible="{Binding HasDataMoments}">
+              <TextBlock Classes="muted" Text="{Binding LocalDataMoment}" />
+              <TextBlock Classes="muted" Text="{Binding CloudDataMoment}" />
+              <TextBlock Classes="error"
+                         Text="Есть невыгруженные изменения."
+                         IsVisible="{Binding HasUnsyncedChanges}" />
+            </StackPanel>
           </StackPanel>
 
           <TextBlock Classes="secondary"
@@ -377,6 +396,66 @@
             <Button Theme="{StaticResource PrimaryButton}"
                     Content="Заменить"
                     Command="{Binding ConfirmDownloadFromCloudCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ================= подтверждение выгрузки в облако ================= -->
+    <Grid IsVisible="{Binding IsUploadConfirmOpen}" Background="{DynamicResource DimBrush}">
+      <Border Classes="dialog"
+              Width="500"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="Выгрузить в облако" />
+          <TextBlock Classes="secondary" Text="{Binding UploadConfirmText}" TextWrapping="Wrap" />
+          <TextBlock Text="Данные в облаке будут удалены."
+                     FontSize="12.5"
+                     Foreground="{DynamicResource DangerBrush}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasUploadWarning}" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Отмена"
+                    Command="{Binding CancelUploadConfirmCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Classes.danger="{Binding HasUploadWarning}"
+                    Content="{Binding UploadConfirmButtonText}"
+                    Command="{Binding ConfirmUploadToCloudCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ================= история облака ================= -->
+    <Grid IsVisible="{Binding IsArchiveOpen}" Background="{DynamicResource DimBrush}">
+      <Border Classes="dialog"
+              Width="500"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="История облака" />
+          <TextBlock Classes="secondary"
+                     Text="Выберите версию, которую нужно вернуть на этот компьютер."
+                     TextWrapping="Wrap" />
+          <ComboBox ItemsSource="{Binding ArchiveOptions}"
+                    SelectedItem="{Binding SelectedArchive}"
+                    HorizontalAlignment="Stretch" />
+          <TextBlock Classes="muted"
+                     TextWrapping="Wrap"
+                     Text="Текущие данные заменятся версией из истории. Прежняя база будет сохранена в резервную копию, после замены нужен перезапуск." />
+          <TextBlock Classes="error"
+                     Text="{Binding ArchiveError}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding ArchiveError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Отмена"
+                    Command="{Binding CancelArchiveCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Content="Восстановить"
+                    Command="{Binding ConfirmRestoreArchiveCommand}" />
           </StackPanel>
         </StackPanel>
       </Border>

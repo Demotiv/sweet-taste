@@ -115,6 +115,33 @@ public sealed class SettingsService
         }
     }
 
+    /// <summary>Когда данные последний раз менялись на этом устройстве; null — ещё не менялись.</summary>
+    /// <remarks>
+    /// Читается из базы при каждом обращении, а не из кеша <c>_values</c>: отметку ставят
+    /// триггеры SQLite, и словарь, снятый при запуске, её не увидит.
+    /// </remarks>
+    public DateTimeOffset? DataChangedAt
+    {
+        get
+        {
+            try
+            {
+                using var connection = _database.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT value FROM app_settings WHERE key = 'data_changed_at' LIMIT 1;";
+
+                return command.ExecuteScalar() is string value &&
+                       DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var moment)
+                    ? moment
+                    : null;
+            }
+            catch (SqliteException)
+            {
+                return null;
+            }
+        }
+    }
+
     /// <summary>Ручной бэкап с меткой времени. Возвращает путь или null, если базы ещё нет.</summary>
     public string? CreateBackupNow() => _database.CreateBackupNow(BackupRetentionDays);
 

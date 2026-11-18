@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -29,8 +30,8 @@ public sealed record SyncResult
 }
 
 /// <summary>
-/// Загружает снапшот в облако через PostgREST: очищает таблицы пользователя
-/// и вставляет строки снапшота.
+/// Обменивается снапшотами с облаком через PostgREST: выгрузка и чтение
+/// бизнес-таблиц, состояние облака и история снапшотов.
 /// </summary>
 /// <remarks>
 /// Локальная база — источник истины, облако — реплика, поэтому каждая выгрузка
@@ -150,10 +151,163 @@ public sealed class SyncService : IDisposable
         var tables = new Dictionary<string, IReadOnlyList<Dictionary<string, JsonElement>>>();
         foreach (var table in SnapshotRows.LoadOrder)
         {
-            tables[table] = await SelectAsync(table, session, cancellationToken);
+            tables[table] = await SelectAsync($"{table}?select=*", session, cancellationToken);
         }
 
         return SnapshotReader.Read(tables, DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Снимает копию текущего облачного снапшота в историю.
+    /// </summary>
+    /// <remarks>
+    /// Вызывается из <see cref="UploadWithArchiveAsync"/> перед заменой: она стирает строки
+    /// пользователя, поэтому архив берётся раньше. Отказы сервера
+    /// (<c>empty</c>, <c>duplicate</c>, <c>no_state</c>) приходят как
+    /// <see cref="ArchiveResult"/> с <c>Archived = false</c> — это не ошибка,
+    /// и выгрузку можно продолжать.
+    /// </remarks>
+    public async Task<ArchiveResult> ArchiveAsync(
+        AuthSession session,
+        int keep = 10,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        var request = CreateRequest(HttpMethod.Post, $"{_options.RestUrl}/rpc/archive_snapshot", session);
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(new { p_keep = keep }),
+            Encoding.UTF8,
+            "application/json");
+
+        using var response = await _http.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw CreateError(response.StatusCode, body, "archive_snapshot");
+        }
+
+        return ReadArchiveResult(body);
+    }
+
+    /// <summary>
+    /// Снимает копию текущего облака в историю и только потом заменяет его
+    /// новым снапшотом.
+    /// </summary>
+    /// <remarks>
+    /// Обе операции намеренно не объединены в одну транзакцию. Архив обязан
+    /// переживать неудачную замену: если <c>archive_snapshot</c> закоммичен,
+    /// а <c>replace_snapshot</c> откатился, облако остаётся прежним и его копия
+    /// уже лежит в истории. Обратный порядок такого не даёт — замена стёрла бы
+    /// единственную копию. Замена не начинается без архива: сбой архивации
+    /// отменяет выгрузку, и в облаке ничего не меняется. Повтор после обрыва
+    /// самолечится: неизменённое облако сервер вернёт как <c>duplicate</c>,
+    /// и замена пройдёт.
+    /// </remarks>
+    /// <exception cref="SyncException">
+    /// Копию сохранить не удалось — замена не выполнялась.
+    /// </exception>
+    public async Task<UploadWithArchiveResult> UploadWithArchiveAsync(
+        SyncSnapshot snapshot,
+        AuthSession session,
+        int keep = 10,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(session);
+
+        ArchiveResult archive;
+        try
+        {
+            archive = await ArchiveAsync(session, keep, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new SyncException(
+                "Не удалось сохранить копию текущего облака. Выгрузка отменена, данные в облаке не изменены.",
+                "snapshot_archive",
+                exception);
+        }
+
+        // empty, duplicate и no_state — ответ сервера, а не ошибка: заменять
+        // всё равно есть что, поэтому выгрузка продолжается.
+        var upload = await UploadAtomicAsync(snapshot, session, cancellationToken);
+
+        return new UploadWithArchiveResult
+        {
+            Archive = archive,
+            Upload = upload,
+        };
+    }
+
+    /// <summary>Список истории снапшотов, свежие сверху.</summary>
+    /// <remarks>
+    /// <c>tables</c> не запрашивается: список нужен только для выбора версии,
+    /// а каждый архив — сотни килобайт JSON.
+    /// </remarks>
+    public async Task<IReadOnlyList<SnapshotArchiveInfo>> ListArchivesAsync(
+        AuthSession session,
+        int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        var rows = await SelectAsync(
+            $"snapshot_archive?select=id,taken_at,schema_version,total_rows,archived_at&order=archived_at.desc&limit={limit}",
+            session,
+            cancellationToken);
+
+        return rows.Select(SnapshotReader.ParseArchiveInfo).ToList();
+    }
+
+    /// <summary>Читает снапшот из истории облака.</summary>
+    /// <remarks>
+    /// Версия схемы берётся из самого архива: копию могли сделать прошлой
+    /// версией приложения, и подменять её текущей нельзя.
+    /// </remarks>
+    public async Task<SyncSnapshot> DownloadArchiveAsync(
+        Guid archiveId,
+        AuthSession session,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        var rows = await SelectAsync(
+            $"snapshot_archive?select=schema_version,taken_at,tables&id=eq.{archiveId:D}&limit=1",
+            session,
+            cancellationToken);
+
+        // Пустой ответ — архив обрезан или удалён с другого устройства;
+        // список в интерфейсе устарел.
+        if (rows.Count == 0)
+        {
+            throw new SyncException("Архивный снапшот не найден. Обновите список.", "snapshot_archive");
+        }
+
+        var row = rows[0];
+        var takenAt = DateTimeOffset.Parse(row["taken_at"].GetString()!, CultureInfo.InvariantCulture);
+        var schemaVersion = (int)row["schema_version"].GetInt64();
+
+        return SnapshotReader.Read(
+            SnapshotReader.ParseTables(row["tables"]),
+            takenAt,
+            schemaVersion);
+    }
+
+    /// <summary>Состояние облака из <c>sync_state</c> или <c>null</c>, если облако пустое.</summary>
+    public async Task<CloudState?> ReadCloudStateAsync(
+        AuthSession session,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        var rows = await SelectAsync(
+            "sync_state?select=schema_version,last_snapshot_at,row_counts&limit=1",
+            session,
+            cancellationToken);
+
+        return rows.Count == 0 ? null : SnapshotReader.ParseCloudState(rows[0]);
     }
 
     public void Dispose()
@@ -164,12 +318,14 @@ public sealed class SyncService : IDisposable
         }
     }
 
+    /// <summary>Читает строки таблицы по полному пути с query-строкой PostgREST.</summary>
     private async Task<IReadOnlyList<Dictionary<string, JsonElement>>> SelectAsync(
-        string table,
+        string path,
         AuthSession session,
         CancellationToken cancellationToken)
     {
-        var request = CreateRequest(HttpMethod.Get, $"{_options.RestUrl}/{table}?select=*", session);
+        var table = path.Split('?')[0];
+        var request = CreateRequest(HttpMethod.Get, $"{_options.RestUrl}/{path}", session);
 
         using var response = await _http.SendAsync(request, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -297,6 +453,43 @@ public sealed class SyncService : IDisposable
         return new SyncException(
             detail is null ? prefix + ". Проверьте интернет." : prefix + ": " + detail,
             table);
+    }
+
+    private static ArchiveResult ReadArchiveResult(string body)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                throw new SyncException("Сервер вернул не результат архивации.");
+            }
+
+            if (!root.TryGetProperty("archived", out var archived) || archived.ValueKind != JsonValueKind.True)
+            {
+                return new ArchiveResult
+                {
+                    Archived = false,
+                    Reason = root.TryGetProperty("reason", out var reason) ? reason.GetString() : null,
+                };
+            }
+
+            return new ArchiveResult
+            {
+                Archived = true,
+                Id = root.TryGetProperty("id", out var id) ? id.GetGuid() : null,
+                TakenAt = root.TryGetProperty("taken_at", out var takenAt) ? takenAt.GetDateTimeOffset() : null,
+                TotalRows = root.TryGetProperty("total_rows", out var totalRows) ? totalRows.GetInt32() : 0,
+            };
+        }
+        catch (JsonException exception)
+        {
+            throw new SyncException(
+                "Не удалось разобрать ответ сервера (archive_snapshot).",
+                "archive_snapshot",
+                exception);
+        }
     }
 
     private static IReadOnlyDictionary<string, int>? ReadCounts(string body)

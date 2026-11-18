@@ -7,7 +7,7 @@ namespace SweetTaste.Core.Storage;
 /// <summary>Простые миграции по PRAGMA user_version. Каждая версия — отдельный шаг.</summary>
 internal static class DatabaseMigrator
 {
-    public const int CurrentVersion = 15;
+    public const int CurrentVersion = 16;
 
     public static void Migrate(SqliteConnection connection)
     {
@@ -100,6 +100,11 @@ internal static class DatabaseMigrator
             if (version < 15)
             {
                 ApplyVersion15(connection, transaction);
+            }
+
+            if (version < 16)
+            {
+                ApplyVersion16(connection, transaction);
             }
 
             SetUserVersion(connection, transaction, CurrentVersion);
@@ -571,6 +576,64 @@ internal static class DatabaseMigrator
             SET paid_amount_kopecks = MIN(paid_amount_kopecks, total_price_kopecks);
             """);
     }
+
+    /// <summary>
+    /// Отметка последнего изменения данных: карточка синхронизации сравнивает её
+    /// с временем облака. Триггеры, а не вызовы в сервисах: запись идёт из десятка
+    /// мест, и новый сервис не должен помнить про отметку.
+    /// </summary>
+    /// <remarks>
+    /// Служебные таблицы (<c>app_settings</c>, <c>confectioner_profile</c>) в облако
+    /// не выгружаются, поэтому их правки отметку не двигают. SQLite вешает триггер
+    /// на одно событие, поэтому на каждую таблицу их три — формы одинаковые,
+    /// и текст собирается циклом, а не списком из тридцати шести блоков.
+    /// </remarks>
+    private static void ApplyVersion16(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        Execute(connection, transaction, """
+            INSERT INTO app_settings (key, value) VALUES ('data_changed_at', '')
+            ON CONFLICT (key) DO NOTHING;
+            """);
+
+        foreach (var table in SyncedTables)
+        {
+            foreach (var (eventName, suffix) in TriggerEvents)
+            {
+                Execute(connection, transaction, $"""
+                    CREATE TRIGGER IF NOT EXISTS trg_{table}_{suffix}
+                    AFTER {eventName} ON {table}
+                    BEGIN
+                        UPDATE app_settings SET value = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                        WHERE key = 'data_changed_at';
+                    END;
+                    """);
+            }
+        }
+    }
+
+    /// <summary>Таблицы снапшота: их правки и есть «данные на этом компьютере изменились».</summary>
+    private static readonly string[] SyncedTables =
+    {
+        "ingredient_categories",
+        "recipe_categories",
+        "packaging_categories",
+        "ingredients",
+        "purchases",
+        "recipes",
+        "recipe_ingredients",
+        "customers",
+        "orders",
+        "order_items",
+        "packaging_items",
+        "order_packaging",
+    };
+
+    private static readonly (string Event, string Suffix)[] TriggerEvents =
+    {
+        ("INSERT", "insert"),
+        ("UPDATE", "update"),
+        ("DELETE", "delete"),
+    };
 
     private static int GetUserVersion(SqliteConnection connection)
     {

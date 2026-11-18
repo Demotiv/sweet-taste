@@ -18,8 +18,9 @@ namespace SweetTaste.Desktop.Sync;
 internal static class SyncOnExit
 {
     // Один запрос до Supabase занимает 0.3–2.4 с, а снапшот уходит одним RPC
-    // с base64-фото рецептов: 5 с не хватало даже на пустую базу.
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+    // с base64-фото рецептов: 5 с не хватало даже на пустую базу. Запросов
+    // теперь два (архив и замена), поэтому таймаут поднят с 30 до 45 с.
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(45);
 
     public static void Run(
         AppDatabase database,
@@ -48,7 +49,11 @@ internal static class SyncOnExit
         }
         catch (Exception exception)
         {
-            Log($"{exception.GetType().Name}: {exception.Message}");
+            // Причина архивации спрятана во вложенном исключении: снаружи только
+            // «выгрузка отменена», а в журнале нужен ответ сервера.
+            Log(exception.InnerException is null
+                ? $"{exception.GetType().Name}: {exception.Message}"
+                : $"{exception.GetType().Name}: {exception.Message} Причина: {exception.InnerException.Message}");
         }
     }
 
@@ -72,8 +77,16 @@ internal static class SyncOnExit
         var snapshot = new SnapshotExporter(database).Export(DateTimeOffset.UtcNow);
         Log($"снапшот собран: {snapshot.TotalRows} строк");
 
-        var result = await sync.UploadAtomicAsync(snapshot, session, cancellation.Token);
-        Log($"выгрузка завершена: {result.TotalRows} строк");
+        var result = await sync.UploadWithArchiveAsync(
+            snapshot,
+            session,
+            cancellationToken: cancellation.Token);
+
+        Log(result.Archive.Archived
+            ? $"архив: сохранён ({result.Archive.TotalRows} строк)"
+            : $"архив: пропущен ({result.Archive.Reason ?? "причина не указана"})");
+
+        Log($"выгрузка завершена: {result.Upload.TotalRows} строк");
     }
 
     private static void Log(string message)

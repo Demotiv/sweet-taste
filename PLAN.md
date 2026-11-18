@@ -155,7 +155,7 @@
 ингредиенты и закупки → рецепты с весом → клиенты → заказы с упаковкой →
 отчёты с графиками → профиль, тема, бэкапы и выгрузка данных.
 
-Логика — 183 теста; UI проверен вручную на основных сценариях.
+Логика — 208 тестов; UI проверен вручную на основных сценариях.
 На странице «Ингредиенты» карточка ингредиента открывается нажатием на любую часть строки.
 На странице «Заказы» детали заказа открываются нажатием на любую часть строки.
 Просмотровые окна закрываются кликом по затемнённому фону; формы и подтверждения — нет.
@@ -249,11 +249,11 @@ Windows-приложение можно использовать как есть
 - импорт данных из Excel;
 - экспорт отчётов в Excel/PDF.
 
-Синхронизация с облаком (в работе): схема Supabase создана и защищена RLS, проверена
-через REST. Готовы экспорт снапшота (`Sync/SnapshotExporter.cs`), вход по email/паролю
+Синхронизация с облаком: схема Supabase создана и защищена RLS, проверена
+через REST. Экспорт снапшота (`Sync/SnapshotExporter.cs`), вход по email/паролю
 (`Sync/SupabaseAuthClient.cs`), DPAPI-хранилище сессии (`Sync/ProtectedSessionStore.cs`)
-и выгрузка в облако (`Sync/SyncService.cs`, в том числе атомарная через RPC) —
-42 теста, всего 166. Функция `replace_snapshot` и четыре помощника применены в облаке
+и выгрузка в облако (`Sync/SyncService.cs`, в том числе атомарная через RPC).
+Функция `replace_snapshot` и четыре помощника применены в облаке
 пятью частями и проверены через REST.
 
 Шаг 5 готов: на странице «Настройки» первой стоит карточка «Синхронизация».
@@ -264,7 +264,8 @@ Windows-приложение можно использовать как есть
 
 Шаг 6 готов: при закрытии окна приложение выгружает снапшот в облако
 (`Sync/SyncOnExit.cs`, подписка на `desktop.ShutdownRequested` в `App.axaml.cs`).
-Выгрузка идёт в пуле потоков, ждётся синхронно с таймаутом 30 с; протухший токен
+Выгрузка идёт в пуле потоков, ждётся синхронно с таймаутом 45 с (после шага 3 к замене
+добавился архивный запрос); протухший токен
 обновляется перед выгрузкой. Ошибки не мешают закрытию — только пишутся
 в `%LOCALAPPDATA%\SweetTaste\sync.log`. Проверено вручную: снапшот из 59 строк
 уходит в облако за ~1 с, 17 заказов видны в панели Supabase.
@@ -281,14 +282,53 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 бэкап, после — кнопка «Перезапустить приложение». 183 теста.
 Шаг 7 закоммичен и запушен (`5910712`), CI зелёный. Выпущена версия `0.5.0`.
 
+История снапшотов в облаке (шаги 1–5 готовы): клиент читает архив, выгрузка идёт
+в порядке «архив → замена», восстановление версии — из окна «История облака».
+`Sync/SnapshotArchive.cs` — `SnapshotArchiveInfo` (список без `tables`),
+`ArchiveResult` (архив или причина отказа `empty`/`duplicate`/`no_state`),
+`CloudState` (что сейчас лежит в облаке по `sync_state`) и `UploadWithArchiveResult`
+(оба ответа вызывающему: была ли копия и что стало после замены).
+`SyncService` получил `ArchiveAsync`, `ListArchivesAsync`, `DownloadArchiveAsync`,
+`ReadCloudStateAsync` и `UploadWithArchiveAsync`; `SelectAsync` принимает полный путь
+с query-строкой. Сбой архива отменяет замену и приходит как `SyncException`
+с `Table = "snapshot_archive"` и исходной ошибкой внутри; `empty`/`duplicate`/`no_state`
+замену не отменяют. `SyncOnExit` выгружает новым методом, пишет в журнал итог архива
+и таймаут поднят до 45 с. `SnapshotReader.ParseTables` разбирает `tables` архивного
+снапшота тем же `ParseRows`, а `Read(..., schemaVersion)` берёт версию из архива.
+19 тестов, всего 202.
+
+История снапшотов, шаг 4 готов: «Выгрузить в облако» сначала показывает подтверждение
+с числами — что лежит в облаке и что уйдёт с этой машины, — и только после нажатия
+выгружает в порядке «архив → замена».
+
+История снапшотов, шаг 5 готов: в карточке «Синхронизация» есть кнопка «История облака» —
+список версий с датой, числом строк и версией схемы; выбранная версия заменяет локальные
+данные через бэкап, после чего приложение предлагает перезапуск и при закрытии выгружает
+восстановленные данные в облако. Функция «история снапшотов в облаке» завершена.
+
+В карточке «Синхронизация» видны две даты: «На этом компьютере» — когда локальные данные
+последний раз менялись (триггеры миграции v16), и «В облаке» — когда облако обновлялось
+последний раз (`sync_state`). Если локальное новее облачного больше чем на секунду,
+под ними горит «Есть невыгруженные изменения.».
+
+Версия `0.6.0` собрана: история снапшотов в облаке (архив перед каждой заменой,
+список версий, восстановление) и две даты в карточке синхронизации. 208 тестов.
+Проверено вручную: создание заказа поднимает отметку, карточка показывает
+«Есть невыгруженные изменения.», выгрузка уходит в порядке «архив → замена»
+(59 → 61 строка, прежнее состояние сохранено в историю).
+
 ## 4.1. Технические заметки
 
 - Запуск: `dotnet run --project src/SweetTaste.Desktop`
 - Тесты: `dotnet test`
 - База: `%APPDATA%\SweetTaste\sweet-taste.db`, бэкапы рядом в `backups\` (14 дней).
-- Схема: `PRAGMA user_version` = 15; выход рецепта и количество в заказе хранятся в тысячных долях,
+- Схема: `PRAGMA user_version` = 16; выход рецепта и количество в заказе хранятся в тысячных долях,
   заказы хранят снимок себестоимости, упаковки, скидки и оплаты; настройки — в `app_settings`,
   профиль — в `confectioner_profile`, клиенты — в `customers`, фото и технология — в `recipes`.
+- Миграция v16 ставит 36 триггеров (12 бизнес-таблиц × insert/update/delete): они пишут
+  момент правки в `app_settings.data_changed_at`. `app_settings` и `confectioner_profile`
+  не покрыты — они не выгружаются в облако. Версия схемы снапшота осталась 15:
+  состав облачных таблиц не менялся, обмен с `0.5.0` работает в обе стороны.
 - Итог заказа хранится целым числом рублей; старые суммы округлены вверх миграцией v15.
 - Масштаб интерфейса применяется через `LayoutTransformControl`; при размере больше экрана окно разворачивается.
 - При миграции v13 старые выданные заказы считаются оплаченными.
@@ -383,6 +423,36 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   `security invoker` у всех, поэтому RLS действует и внутри помощников.
   Права на помощников тоже сняты с `public`/`anon`: анонимный вызов любого из них
   даёт `401 permission denied for function ...`.
+- **История снапшотов в облаке** (`supabase/004_snapshot_archive.sql`, три части
+  `parts/004_part1..3.sql`). `replace_snapshot` стирает строки пользователя, поэтому
+  предыдущее состояние облака исчезает; архив держит его копию.
+  - `snapshot_archive`: `user_id`, `id`, `taken_at`, `schema_version`, `total_rows`,
+    `row_counts jsonb`, `tables jsonb`, `archived_at`; PK `(user_id, id)`,
+    индекс `ix_snapshot_archive_recent (user_id, archived_at desc)`, RLS `own_rows`.
+  - `tables` — ровно та же форма, что `p_tables` у `replace_snapshot`
+    (`{table: [row, ...]}`), поэтому восстановление переиспользует клиентский
+    `SnapshotReader` без второго парсера.
+  - `_archive_snapshot_tables(p_user_id)` (`language sql stable`) собирает 12 таблиц
+    через `jsonb_agg(to_jsonb(t) - 'user_id' order by ...)`. `user_id` вырезан:
+    владелец задан колонкой архива. Сортировка повторяет `SnapshotRows.LoadOrder`
+    и `SnapshotExporter`, иначе сравнение на дубликат не сработает.
+  - `archive_snapshot(p_keep integer default 10)` — `security invoker`, `$fn$`.
+    `auth.uid()` пуст → `42501`. `set_config('bytea_output','hex',true)` — иначе
+    `to_jsonb(photo)` даёт escape-формат вместо `\x...`. Возвращает
+    `{archived:false, reason:no_state|empty|duplicate}` либо
+    `{archived:true, id, taken_at, schema_version, total_rows, row_counts}`.
+    Пустое облако не архивируется, идентичное состояние не дублируется — иначе
+    окно истории вытесняется копиями. Обрезка до `p_keep` последних по `archived_at`.
+  - Хранится 10 версий: фото 449 КБ → hex ≈ 898 КБ текста → ~450–600 КБ на диске,
+    итого ≤6 МБ (≈1% бесплатных 500 МБ).
+  - Порядок выгрузки: `archive_snapshot()` → `replace_snapshot()`. Если архив упал,
+    замена не выполняется — облако остаётся нетронутым.
+  - Клиент вызывает их одним методом `SyncService.UploadWithArchiveAsync(snapshot,
+    session, keep, ct)`: сначала архив, затем замена. Транзакция на две RPC не одна
+    намеренно — архив должен переживать неудачную замену, а замена без архива
+    не начинается. Повтор после сбоя самолечится: нетронутое облако сервер вернёт
+    как `duplicate`, и замена пройдёт. Оба ответа отдаются вызывающему
+    (`UploadWithArchiveResult`), чтобы интерфейс показал, сохранилась ли копия.
 - **Редактор SQL в панели Supabase обрезает текст на `$$`** — тело функции
   открывается и закрывается `$fn$`. Ошибка выглядит как
   `42601: unterminated dollar-quoted string at or near "$$"` с припиской
@@ -390,6 +460,17 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 - `SyncService.UploadAtomicAsync` шлёт один `POST /rest/v1/rpc/replace_snapshot`
   и берёт счётчики из ответа сервера; `UploadAsync` (поштучная загрузка) остаётся
   запасным путём.
+- Архив читается теми же средствами, что и обычный снапшот:
+  `SnapshotReader.ParseTables` переводит `snapshot_archive.tables` в строки через
+  `ParseRows` (`Clone()` и `SyncException` в одном месте), затем
+  `Read(tables, taken_at, schema_version)` собирает снапшот. Версия схемы берётся
+  из строки архива: копию могли сделать прошлой версией приложения.
+- `snapshot_archive` намеренно не входит ни в `SyncTables`, ни в `SnapshotRows.LoadOrder`:
+  это метаданные облака, а не бизнес-данные, и в `p_tables` они не попадают.
+- `ListArchivesAsync` запрашивает только `id,taken_at,schema_version,total_rows,archived_at`:
+  каждый `tables` — сотни килобайт, и тянуть их на каждое открытие списка незачем.
+- `SelectAsync` принимает полный путь с query (`"ingredients?select=*"`), поэтому
+  запросы архива, списка версий и `sync_state` не дублируют HTTP-код.
 - UI входа: `SettingsViewModel` принимает `SupabaseAuthClient` и `ISessionStore`,
   в конструкторе вызывает `RestoreSession()` — вход восстанавливается из
   `sync-session.bin` при каждом открытии страницы. `SignInCommand` (async) валидирует
@@ -405,18 +486,21 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 - Выгрузка при выходе: `Sync/SyncOnExit.cs`, подписка на `desktop.ShutdownRequested`
   в `App.axaml.cs`. Нет сессии — выход без сети; протухший токен обновляется
   через `RefreshAsync` и сохраняется в `sync-session.bin`; затем
-  `SnapshotExporter.Export` → `SyncService.UploadAtomicAsync`.
+  `SnapshotExporter.Export` → `SyncService.UploadWithArchiveAsync`.
 - **Deadlock при закрытии.** `SyncService` и `SupabaseAuthClient` ждут HTTP через
   `await _http.SendAsync(...)` без `ConfigureAwait(false)`, поэтому продолжения
   планировались в заблокированный UI-поток, а `ShutdownRequested` ждёт выгрузку
   синхронно — окно висело. Фикс минимальный: вся работа обёрнута в
   `Task.Run(...).GetAwaiter().GetResult()`, продолжения уходят в пул потоков.
   Править уже проверенные `SyncService`/`SupabaseAuthClient` не стали.
-- Таймаут выгрузки — 30 с (`CancellationTokenSource`). При 5 с снапшот с base64-фото
+- Таймаут выгрузки — 45 с (`CancellationTokenSource`). При 5 с снапшот с base64-фото
   не успевал: на запрос уходило 0.3–2.4 с, и выгрузка падала с `TaskCanceledException`.
+  До 45 с поднят, когда к замене добавился архивный запрос.
 - `SyncOnExit` пишет диагностику в `%LOCALAPPDATA%\SweetTaste\sync.log` на каждом
-  этапе (сессия загружена/нет, снапшот собран, выгрузка завершена), а не только
-  при исключении — иначе зависание не отличить от тихого отказа.
+  этапе (сессия загружена/нет, снапшот собран, итог архива, выгрузка завершена),
+  а не только при исключении — иначе зависание не отличить от тихого отказа.
+  При сбое архива в строку ошибки добавляется причина из `InnerException`:
+  наружу отдаётся только «выгрузка отменена».
 - Ошибка выгрузки не мешает закрытию: приложение закрывается, причина остаётся в логе.
   `AutoUpdate.ps1` ждёт закрытия процесса до 120 с, поэтому выгрузка при выходе
   обновление не ломает.
@@ -424,6 +508,19 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   а не пустое облако.** Политика `own_rows` фильтрует по `auth.uid()`, у анонимного
   ключа сессии нет. Проверять данные только в панели Supabase (Table Editor)
   или под настоящей сессией.
+- **Восстановление версии из истории** (`SettingsViewModel`, диалог «История облака»):
+  `OpenArchiveAsync` только читает список (`ListArchivesAsync`) и открывает диалог —
+  данные не меняются; ошибка чтения попадает в `ArchiveError` и диалог открывается
+  с ней, пустой список — сообщение «В истории пока нет версий.» без диалога.
+  `ConfirmRestoreArchiveAsync` закрывает диалог, читает снапшот по `SelectedArchive.Info.Id`
+  и повторяет путь загрузки из облака: проверка `SchemaVersion` → `CreateBackupNow()`
+  → `SnapshotImporter.Import` → сообщение с числом строк, датой версии и именем бэкапа.
+  Ошибки восстановления идут в `SyncError` карточки, как у остальных действий синхронизации.
+  `IsArchiveBusy` отделяет чтение списка от `IsSyncBusy`: список — не запись, и блокировать
+  ради него кнопки выгрузки незачем.
+- Список версий — `ArchiveOption` (в конце `SettingsViewModel.cs`, как `OrderRecipeOption`
+  в `OrdersViewModel.cs`): поля `Info` и `Text`, `ToString()` отдаёт `Text`, поэтому
+  `ComboBox` показывает версию без `ItemTemplate`.
 
 ## 5. Открытые вопросы
 
@@ -488,6 +585,9 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 - `scripts/release.ps1` — сборка релиза; `scripts/release/` — README, `Update.cmd`, `Update.ps1`,
   `AutoUpdate.ps1`, ярлык.
 - `dist/` — готовые ZIP и SHA-256; `artifacts/` — промежуточная публикация (оба в `.gitignore`).
+- `supabase/` — схема и RPC облака: `001_schema.sql`, `002_policies.sql`,
+  `003_sync_rpc.sql` (выгрузка), `004_snapshot_archive.sql` (история снапшотов);
+  `supabase/parts/` — те же файлы, порезанные под лимит редактора панели.
 
 ## 8. Журнал
 
@@ -748,6 +848,74 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   `<Version>` поднят с `0.4.0`, добавлены заметки `docs/releases/0.5.0.md`
   с разделом «Как перенести данные на второй компьютер». Схема 15 не менялась,
   183 теста, ZIP 45.9 МБ, SHA-256 `2313c865…548ee5`.
+- 18.11.2026 — история снапшотов в облаке, шаг 1: создана миграция `004`
+  (`supabase/004_snapshot_archive.sql`, части `parts/004_part1..3.sql`).
+  Таблица `snapshot_archive` с `tables jsonb` в форме `p_tables`, индекс по
+  `archived_at desc`, RLS `own_rows`; `_archive_snapshot_tables` собирает 12 таблиц
+  через `jsonb_agg(to_jsonb(t) - 'user_id')`; `archive_snapshot(p_keep default 10)`
+  с `bytea_output = hex`, отказами `no_state`/`empty`/`duplicate` и обрезкой до
+  10 версий. Части: 39 / 64 / 95 строк, `$$` нет. Применение в панели — за
+  пользователем.
+- 18.11.2026 — история снапшотов, шаг 2: клиентское чтение архива.
+  `Sync/SnapshotArchive.cs` — `SnapshotArchiveInfo`, `ArchiveResult`, `CloudState`;
+  в `SyncService` добавлены `ArchiveAsync` (`POST rpc/archive_snapshot` с `p_keep`),
+  `ListArchivesAsync` (только метаданные, `archived_at desc`), `DownloadArchiveAsync`
+  (по id, `tables` → `ParseTables`) и `ReadCloudStateAsync` (`sync_state` или `null`).
+  `SnapshotReader` получил `ParseTables`, `Read(..., schemaVersion)` и разбор строк
+  архива и состояния; `SelectAsync` принимает полный путь с query. Тесты
+  `SyncServiceArchiveTests` (15), всего 198, сборка без предупреждений.
+- 18.11.2026 — история снапшотов, шаг 3: порядок «архив → замена».
+  `SnapshotArchive.cs` — `UploadWithArchiveResult` (архив + замена: интерфейсу нужно
+  знать, сохранилась ли копия). `SyncService.UploadWithArchiveAsync(snapshot, session,
+  keep, ct)` вызывает `ArchiveAsync`, затем `UploadAtomicAsync`; сбой архива
+  оборачивается в `SyncException` («Выгрузка отменена, данные в облаке не изменены»,
+  `Table = "snapshot_archive"`, исходная ошибка в `InnerException`) и замена
+  не выполняется; `empty`/`duplicate`/`no_state` — не ошибка. `SyncOnExit` переведён
+  на новый метод, журнал пишет итог архива (`сохранён (N строк)` / `пропущен (reason)`)
+  и причину сбоя из `InnerException`, таймаут поднят с 30 до 45 с на два запроса.
+  Тесты +4 (`CallsArchiveBeforeReplace`, `ArchiveFails_DoesNotReplace`,
+  `ArchiveSkipped_StillReplaces`, `ReturnsBothResults`), всего 202, предупреждений нет.
+- 18.11.2026 — история снапшотов, шаг 4: подтверждение выгрузки с числами.
+  `SettingsViewModel`: `UploadToCloudAsync` стал `RequestUploadToCloudAsync`
+  (команда `RequestUploadToCloudCommand`) — экспорт снапшота в `_pendingUpload`,
+  `ReadCloudStateAsync` и открытие диалога, без выгрузки. Новое состояние
+  `IsUploadConfirmOpen`, `UploadConfirmText`, `HasUploadWarning`,
+  `UploadConfirmButtonText`; `ConfirmUploadToCloudAsync` шлёт `UploadWithArchiveAsync`
+  и пишет в сообщение итог архива (`Archived`/`duplicate`/`empty`/`no_state`);
+  `CancelUploadConfirm` чистит `_pendingUpload`; `IsFormOpen`/`CancelForm` учитывают
+  новый диалог. Текст: «Сейчас в облаке: N строк, обновлено дата, время» (локальное,
+  из `sync_state`), «С этой машины: N строк (заказы, позиции, ...)» — только ненулевые
+  таблицы в порядке `SnapshotRows.LoadOrder`, «Прежнее состояние облака сохранится
+  в истории — последние 10 версий». Пустая база при непустом облаке даёт красную
+  строку «Данные в облаке будут удалены.» и кнопку «Выгрузить пустую базу».
+  `SettingsView.axaml`: модалка по образцу загрузки из облака, класс `danger`
+  перекрывает фон `PrimaryButton` через локальный `Style`. 202 теста, предупреждений нет.
+- 18.11.2026 — история снапшотов, шаг 5: восстановление версии из истории.
+  `SettingsViewModel` получил `IsArchiveOpen`, `ArchiveOptions`, `SelectedArchive`,
+  `ArchiveError`, `IsArchiveBusy`; команды `OpenArchiveAsync` (список версий, пустой —
+  сообщение без диалога), `ConfirmRestoreArchiveAsync` (снапшот по id, проверка схемы,
+  бэкап, импорт, перезапуск) и `CancelArchive`; `IsFormOpen`/`CancelForm` учитывают диалог.
+  В карточке «Синхронизация» третья кнопка «История облака», новая модалка с выпадающим
+  списком версий («дата, время · N строк · схема N»), предупреждением и ошибкой.
+  Тип `ArchiveOption` — в конце `SettingsViewModel.cs`. 202 теста, предупреждений нет.
+- 18.11.2026 — миграция v16: отметка последнего изменения локальных данных. Триггеры
+  SQLite на 12 бизнес-таблицах пишут `strftime('%Y-%m-%dT%H:%M:%fZ','now')` в
+  `app_settings.data_changed_at`; SQLite не умеет один триггер на несколько событий,
+  поэтому их 36 (`trg_<таблица>_insert|update|delete`), текст собирается циклом по
+  `SyncedTables`/`TriggerEvents`. `SettingsService.DataChangedAt` читает отметку из базы,
+  а не из кеша настроек: кеш снимается при запуске и правок триггеров не видит.
+  В карточке «Синхронизация» появились строки «На этом компьютере / В облаке» и красная
+  приписка «Есть невыгруженные изменения.» (допуск 1 с); строки обновляются при
+  восстановлении входа, после входа, выгрузки, загрузки и восстановления версии,
+  при выходе очищаются, ошибка чтения облака тихо оставляет «нет данных».
+  Версия схемы снапшота оставлена 15 (форма облачных данных не менялась), экспортёр
+  берёт её из `SnapshotReader.DatabaseSchemaVersion`, иначе загрузка своей же выгрузки
+  упиралась бы в «Обновите приложение». Тесты `DataChangedTriggerTests` (6), всего 208;
+  миграция проверена на копии реальной базы: 16, 36 триггеров, отметка ставится.
+- 18.11.2026 — проверено вручную на реальной базе: создание заказа подняло отметку,
+  карточка показала «Есть невыгруженные изменения.», выгрузка ушла в порядке
+  «архив → замена» (59 → 61 строка, прежнее состояние сохранено в историю).
+  Выпущена версия `0.6.0`.
 
 ## 9. Идеи на будущее
 

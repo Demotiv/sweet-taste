@@ -27,7 +27,9 @@ public sealed class SnapshotExporter
 
         var snapshot = new SyncSnapshot
         {
-            SchemaVersion = DatabaseMigrator.CurrentVersion,
+            // Версия снапшота, а не базы: v16 меняет только триггеры и служебную строку
+            // настроек, форма данных та же, что в v15. Поэтому обмен с 0.5.0 не ломается.
+            SchemaVersion = SnapshotReader.DatabaseSchemaVersion,
             TakenAt = takenAt,
             IngredientCategories = ReadIngredientCategories(connection, transaction),
             RecipeCategories = ReadRecipeCategories(connection, transaction),

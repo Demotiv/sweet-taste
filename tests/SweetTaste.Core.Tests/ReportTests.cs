@@ -209,6 +209,13 @@ public class ReportTests
                     CREATE TABLE ingredient_categories (id TEXT NOT NULL PRIMARY KEY);
                     CREATE TABLE ingredients (id TEXT NOT NULL PRIMARY KEY);
                     CREATE TABLE purchases (id TEXT NOT NULL PRIMARY KEY);
+                    CREATE TABLE recipe_ingredients (
+                        recipe_id TEXT NOT NULL,
+                        ingredient_id TEXT NOT NULL,
+                        amount_milli INTEGER NOT NULL CHECK (amount_milli > 0),
+                        position INTEGER NOT NULL,
+                        PRIMARY KEY (recipe_id, ingredient_id)
+                    );
                     CREATE TABLE recipes (
                         id TEXT NOT NULL PRIMARY KEY,
                         name TEXT NOT NULL,

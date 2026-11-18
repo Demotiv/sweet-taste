@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
@@ -21,6 +22,10 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
     private readonly ISessionStore _sessions;
     private readonly SyncService _sync;
     private Action? _confirmAction;
+    private SyncSnapshot? _pendingUpload;
+
+    /// <summary>Сколько версий прежнего облака держит архив: то же число уходит в <c>archive_snapshot</c>.</summary>
+    private const int ArchiveKeep = 10;
 
     /// <summary>Сообщает главному окну, что заказы изменились (напоминание о выдачах).</summary>
     public event Action? OrdersChanged;
@@ -152,11 +157,51 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
     private string _syncConfirmText = string.Empty;
 
     [ObservableProperty]
+    private bool _isUploadConfirmOpen;
+
+    [ObservableProperty]
+    private string _uploadConfirmText = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasUploadWarning;
+
+    [ObservableProperty]
+    private string _uploadConfirmButtonText = "Выгрузить";
+
+    [ObservableProperty]
     private bool _isSyncRestartNeeded;
+
+    [ObservableProperty]
+    private string _localDataMoment = string.Empty;
+
+    [ObservableProperty]
+    private string _cloudDataMoment = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasUnsyncedChanges;
+
+    [ObservableProperty]
+    private bool _hasDataMoments;
+
+    [ObservableProperty]
+    private bool _isArchiveOpen;
+
+    [ObservableProperty]
+    private IReadOnlyList<ArchiveOption> _archiveOptions = Array.Empty<ArchiveOption>();
+
+    [ObservableProperty]
+    private ArchiveOption? _selectedArchive;
+
+    [ObservableProperty]
+    private string? _archiveError;
+
+    [ObservableProperty]
+    private bool _isArchiveBusy;
 
     public string BackupFolder => _settings.BackupDirectory;
 
-    public bool IsFormOpen => IsConfirmOpen || IsSyncConfirmOpen;
+    public bool IsFormOpen =>
+        IsConfirmOpen || IsSyncConfirmOpen || IsUploadConfirmOpen || IsArchiveOpen;
 
     public void CancelForm()
     {
@@ -170,6 +215,14 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         {
             IsSyncConfirmOpen = false;
         }
+
+        if (IsUploadConfirmOpen)
+        {
+            IsUploadConfirmOpen = false;
+            _pendingUpload = null;
+        }
+
+        CancelArchive();
     }
 
     partial void OnSelectedThemeChanged(string value)
@@ -335,6 +388,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
             IsSignedIn = true;
             SyncMessage = "Вход выполнен. Данные выгружаются в облако при закрытии приложения.";
             HasSyncMessage = true;
+            await RefreshDataMomentsAsync();
         }
         catch (AuthException ex)
         {
@@ -361,6 +415,10 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         SyncError = null;
         SyncMessage = "Вы вышли из аккаунта. Локальные данные не тронуты.";
         HasSyncMessage = true;
+        LocalDataMoment = string.Empty;
+        CloudDataMoment = string.Empty;
+        HasUnsyncedChanges = false;
+        HasDataMoments = false;
     }
 
     private void RestoreSession()
@@ -373,11 +431,60 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
 
         SignedInEmail = session.Email;
         IsSignedIn = true;
+
+        // Строки «на этом компьютере / в облаке» подтягиваются следом: облако
+        // читается по сети, и открытие страницы не должно ждать ответа.
+        _ = RefreshDataMomentsAsync();
     }
 
-    /// <summary>Выгружает локальные данные в облако по кнопке.</summary>
+    /// <summary>
+    /// Заполняет две строки карточки: когда данные менялись здесь и когда обновлялось
+    /// облако. По разнице видно, есть ли правки, которые ещё не ушли в облако.
+    /// </summary>
+    private async Task RefreshDataMomentsAsync()
+    {
+        var local = _settings.DataChangedAt;
+        var cloud = await ReadCloudMomentAsync();
+
+        LocalDataMoment = local is null
+            ? "На этом компьютере: ещё не менялись"
+            : "На этом компьютере: " + CloudMoment(local.Value);
+        CloudDataMoment = cloud is null
+            ? "В облаке: нет данных"
+            : "В облаке: " + CloudMoment(cloud.Value);
+
+        // Секунда допуска: облако и триггеры пишут время в разные моменты,
+        // и без запаса строка мигала бы сразу после выгрузки.
+        HasUnsyncedChanges = local is not null && cloud is not null &&
+                             local.Value > cloud.Value.AddSeconds(1);
+        HasDataMoments = IsSignedIn;
+    }
+
+    /// <summary>Время последней выгрузки в облако или null, если облако пустое и недоступно.</summary>
+    private async Task<DateTimeOffset?> ReadCloudMomentAsync()
+    {
+        var session = _sessions.Load();
+        if (session is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var state = await _sync.ReadCloudStateAsync(session);
+            return state?.TakenAt;
+        }
+        catch (Exception)
+        {
+            // Без сети или с протухшим токеном строка облака остаётся «нет данных»:
+            // это подсказка в карточке, а не действие, и ошибку показывать незачем.
+            return null;
+        }
+    }
+
+    /// <summary>Читает состояние облака и спрашивает подтверждение выгрузки — данные ещё не уходят.</summary>
     [RelayCommand]
-    private async Task UploadToCloudAsync()
+    private async Task RequestUploadToCloudAsync()
     {
         if (IsSyncBusy)
         {
@@ -397,11 +504,60 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         try
         {
             var snapshot = new SnapshotExporter(_settings.Database).Export(DateTimeOffset.UtcNow);
-            var result = await _sync.UploadAtomicAsync(snapshot, session);
+            var cloud = await _sync.ReadCloudStateAsync(session);
 
-            SyncMessage = $"Данные выгружены в облако: {result.TotalRows} " +
-                          $"{Formats.Plural(result.TotalRows, "строка", "строки", "строк")}.";
+            _pendingUpload = snapshot;
+            ShowUploadConfirm(snapshot, cloud);
+            IsUploadConfirmOpen = true;
+        }
+        catch (SyncException ex)
+        {
+            SyncError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            SyncError = "Не удалось прочитать состояние облака: " + ex.Message;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    /// <summary>Выгружает снапшот, показанный в подтверждении: сначала архив прежнего облака, затем замена.</summary>
+    [RelayCommand]
+    private async Task ConfirmUploadToCloudAsync()
+    {
+        IsUploadConfirmOpen = false;
+
+        var snapshot = _pendingUpload;
+        _pendingUpload = null;
+
+        if (snapshot is null || IsSyncBusy)
+        {
+            return;
+        }
+
+        var session = await EnsureSessionAsync();
+        if (session is null)
+        {
+            return;
+        }
+
+        IsSyncBusy = true;
+        SyncError = null;
+        HasSyncMessage = false;
+
+        try
+        {
+            var result = await _sync.UploadWithArchiveAsync(snapshot, session, ArchiveKeep);
+            var rows = result.Upload.TotalRows;
+            var uploaded = $"Выгружено {rows} {Formats.Plural(rows, "строка", "строки", "строк")}.";
+            var outcome = ArchiveOutcome(result.Archive);
+
+            SyncMessage = outcome.Length == 0 ? uploaded : uploaded + " " + outcome;
             HasSyncMessage = true;
+            await RefreshDataMomentsAsync();
         }
         catch (SyncException ex)
         {
@@ -416,6 +572,85 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
             IsSyncBusy = false;
         }
     }
+
+    [RelayCommand]
+    private void CancelUploadConfirm()
+    {
+        IsUploadConfirmOpen = false;
+        _pendingUpload = null;
+    }
+
+    /// <summary>Собирает текст подтверждения: что сейчас в облаке и что уйдёт с этой машины.</summary>
+    private void ShowUploadConfirm(SyncSnapshot snapshot, CloudState? cloud)
+    {
+        var lines = new List<string>();
+        lines.Add(cloud is null
+            ? "В облаке пока нет данных."
+            : $"Сейчас в облаке: {cloud.TotalRows} " +
+              $"{Formats.Plural(cloud.TotalRows, "строка", "строки", "строк")}, " +
+              $"обновлено {CloudMoment(cloud.TakenAt)}.");
+
+        var total = snapshot.TotalRows;
+        var breakdown = DescribeRowCounts(snapshot.RowCounts);
+        lines.Add($"С этой машины: {total} {Formats.Plural(total, "строка", "строки", "строк")}" +
+                  (breakdown.Length == 0 ? "." : $" ({breakdown})."));
+
+        // Пустая база затрёт непустое облако — про это отдельная красная строка в диалоге.
+        var wipesCloud = total == 0 && cloud is { TotalRows: > 0 };
+        if (wipesCloud)
+        {
+            lines.Add("Вы выгружаете пустую базу: прежняя версия останется в истории.");
+        }
+        else if (cloud is not null)
+        {
+            lines.Add($"Прежнее состояние облака сохранится в истории — последние {ArchiveKeep} версий.");
+        }
+
+        HasUploadWarning = wipesCloud;
+        UploadConfirmButtonText = wipesCloud ? "Выгрузить пустую базу" : "Выгрузить";
+        UploadConfirmText = string.Join("\n", lines);
+    }
+
+    /// <summary>Ненулевые таблицы в порядке <see cref="SyncSnapshot.RowCounts"/>: «заказы 17, позиции 20».</summary>
+    private static string DescribeRowCounts(IReadOnlyDictionary<string, int> counts) =>
+        string.Join(", ", UploadRowLabels
+            .Where(row => counts.TryGetValue(row.Table, out var count) && count > 0)
+            .Select(row => $"{row.Label} {counts[row.Table]}"));
+
+    /// <summary>Что стало с прежним облаком; пустая строка — сервер не стал архивировать, сказать нечего.</summary>
+    private static string ArchiveOutcome(ArchiveResult archive) => archive switch
+    {
+        { Archived: true } => "Прежнее состояние облака сохранено в истории.",
+        { Reason: "duplicate" } => "Прежнее состояние уже было в истории.",
+        { Reason: "empty" } => "Прежнее облако было пустым — архивировать нечего.",
+        _ => string.Empty,
+    };
+
+    /// <summary>Момент выгрузки в облако: локальное время, дата и время через запятую.</summary>
+    private static string CloudMoment(DateTimeOffset value) =>
+        value.ToLocalTime().ToString("dd.MM.yyyy, HH:mm", CultureInfo.InvariantCulture);
+
+    /// <summary>Версия в списке истории: «18.11.2026, 22:38 · 59 строк · схема 15».</summary>
+    private static string ArchiveText(SnapshotArchiveInfo info) =>
+        $"{CloudMoment(info.ArchivedAt)} · {info.TotalRows} " +
+        $"{Formats.Plural(info.TotalRows, "строка", "строки", "строк")} · схема {info.SchemaVersion}";
+
+    /// <summary>Русские названия таблиц снапшота для подтверждения выгрузки.</summary>
+    private static readonly (string Table, string Label)[] UploadRowLabels =
+    {
+        (SyncTables.IngredientCategories, "категории ингредиентов"),
+        (SyncTables.RecipeCategories, "категории рецептов"),
+        (SyncTables.PackagingCategories, "категории упаковки"),
+        (SyncTables.Ingredients, "ингредиенты"),
+        (SyncTables.Purchases, "закупки"),
+        (SyncTables.Recipes, "рецепты"),
+        (SyncTables.RecipeIngredients, "состав рецептов"),
+        (SyncTables.Customers, "клиенты"),
+        (SyncTables.Orders, "заказы"),
+        (SyncTables.OrderItems, "позиции"),
+        (SyncTables.PackagingItems, "упаковка"),
+        (SyncTables.OrderPackaging, "упаковка в заказах"),
+    };
 
     /// <summary>Спрашивает подтверждение перед заменой локальных данных данными из облака.</summary>
     [RelayCommand]
@@ -481,6 +716,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
             IsSyncRestartNeeded = true;
             ReloadOrderCounts();
             OrdersChanged?.Invoke();
+            await RefreshDataMomentsAsync();
         }
         catch (SyncException ex)
         {
@@ -494,6 +730,137 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         {
             IsSyncBusy = false;
         }
+    }
+
+    /// <summary>Читает историю облака и открывает выбор версии — данные ещё не заменяются.</summary>
+    [RelayCommand]
+    private async Task OpenArchiveAsync()
+    {
+        if (IsSyncBusy || IsArchiveBusy)
+        {
+            return;
+        }
+
+        var session = await EnsureSessionAsync();
+        if (session is null)
+        {
+            return;
+        }
+
+        IsArchiveBusy = true;
+        SyncError = null;
+        HasSyncMessage = false;
+        ArchiveError = null;
+        ArchiveOptions = Array.Empty<ArchiveOption>();
+        SelectedArchive = null;
+
+        try
+        {
+            var archives = await _sync.ListArchivesAsync(session);
+            if (archives.Count == 0)
+            {
+                SyncMessage = "В истории пока нет версий.";
+                HasSyncMessage = true;
+                return;
+            }
+
+            ArchiveOptions = archives.Select(info => new ArchiveOption(info, ArchiveText(info))).ToList();
+            SelectedArchive = ArchiveOptions[0];
+            IsArchiveOpen = true;
+        }
+        catch (SyncException ex)
+        {
+            ArchiveError = ex.Message;
+
+            // Диалог открывается с ошибкой: список версий устарел или недоступен,
+            // и повторить чтение можно той же кнопкой в карточке.
+            IsArchiveOpen = true;
+        }
+        catch (Exception ex)
+        {
+            ArchiveError = "Не удалось прочитать историю облака: " + ex.Message;
+            IsArchiveOpen = true;
+        }
+        finally
+        {
+            IsArchiveBusy = false;
+        }
+    }
+
+    /// <summary>Заменяет локальные данные выбранной версией из истории облака.</summary>
+    [RelayCommand]
+    private async Task ConfirmRestoreArchiveAsync()
+    {
+        IsArchiveOpen = false;
+
+        var archive = SelectedArchive;
+        SelectedArchive = null;
+        ArchiveError = null;
+
+        if (archive is null || IsSyncBusy)
+        {
+            return;
+        }
+
+        var session = await EnsureSessionAsync();
+        if (session is null)
+        {
+            return;
+        }
+
+        IsSyncBusy = true;
+        SyncError = null;
+        HasSyncMessage = false;
+
+        try
+        {
+            var snapshot = await _sync.DownloadArchiveAsync(archive.Info.Id, session);
+
+            if (snapshot.SchemaVersion != SnapshotReader.DatabaseSchemaVersion)
+            {
+                SyncError = $"Данные в облаке сохранены версией схемы {snapshot.SchemaVersion}, " +
+                            $"а приложение понимает {SnapshotReader.DatabaseSchemaVersion}. " +
+                            "Обновите приложение.";
+                return;
+            }
+
+            var backup = _settings.CreateBackupNow();
+            var imported = new SnapshotImporter(_settings.Database).Import(snapshot);
+            var rows = $"{imported} {Formats.Plural(imported, "строка", "строки", "строк")}";
+            var moment = CloudMoment(archive.Info.ArchivedAt);
+
+            SyncMessage = backup is null
+                ? $"Восстановлено {rows} из версии от {moment}. " +
+                  "При закрытии приложение выгрузит восстановленные данные в облако."
+                : $"Восстановлено {rows} из версии от {moment}. " +
+                  $"Резервная копия: {Path.GetFileName(backup)}. " +
+                  "При закрытии приложение выгрузит восстановленные данные в облако.";
+            HasSyncMessage = true;
+            IsSyncRestartNeeded = true;
+            ReloadOrderCounts();
+            OrdersChanged?.Invoke();
+            await RefreshDataMomentsAsync();
+        }
+        catch (SyncException ex)
+        {
+            SyncError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            SyncError = "Не удалось восстановить версию из истории: " + ex.Message;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelArchive()
+    {
+        IsArchiveOpen = false;
+        SelectedArchive = null;
+        ArchiveError = null;
     }
 
     /// <summary>
@@ -661,4 +1028,20 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         SettingsService.ThemeSystem => "Как в системе",
         _ => "Светлая",
     };
+}
+
+/// <summary>Версия из истории облака для выпадающего списка.</summary>
+public sealed class ArchiveOption
+{
+    public ArchiveOption(SnapshotArchiveInfo info, string text)
+    {
+        Info = info;
+        Text = text;
+    }
+
+    public SnapshotArchiveInfo Info { get; }
+
+    public string Text { get; }
+
+    public override string ToString() => Text;
 }

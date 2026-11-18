@@ -56,16 +56,79 @@ public static class SnapshotReader
         }
     }
 
+    /// <summary>Разбирает <c>tables</c> архивного снапшота: объект «имя таблицы → строки».</summary>
+    /// <remarks>
+    /// Форма совпадает с <c>p_tables</c> у <c>replace_snapshot</c>, поэтому строки
+    /// разбирает тот же <see cref="ParseRows"/>: клонирование <see cref="JsonElement"/>
+    /// и перевод ошибок в <see cref="SyncException"/> остаются в одном месте.
+    /// Неизвестные ключи и не-массивы безвредны: <see cref="Read"/> берёт только
+    /// известные таблицы, а отсутствующая таблица — это пустой список.
+    /// </remarks>
+    public static IReadOnlyDictionary<string, IReadOnlyList<Dictionary<string, JsonElement>>> ParseTables(
+        JsonElement tables)
+    {
+        if (tables.ValueKind != JsonValueKind.Object)
+        {
+            throw new SyncException("Сервер вернул архив без таблиц.");
+        }
+
+        var result = new Dictionary<string, IReadOnlyList<Dictionary<string, JsonElement>>>(
+            StringComparer.Ordinal);
+
+        foreach (var property in tables.EnumerateObject())
+        {
+            if (property.Value.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            result[property.Name] = ParseRows(property.Value.GetRawText(), property.Name);
+        }
+
+        return result;
+    }
+
+    /// <summary>Строка списка архивов: без <c>tables</c>, только метаданные.</summary>
+    public static SnapshotArchiveInfo ParseArchiveInfo(Dictionary<string, JsonElement> row) => new()
+    {
+        Id = Guid(row, "id"),
+        TakenAt = Timestamp(row, "taken_at"),
+        SchemaVersion = (int)Integer(row, "schema_version"),
+        TotalRows = (int)Integer(row, "total_rows"),
+        ArchivedAt = Timestamp(row, "archived_at"),
+    };
+
+    /// <summary>Строка <c>sync_state</c>: когда выгружали и сколько строк лежит.</summary>
+    public static CloudState ParseCloudState(Dictionary<string, JsonElement> row)
+    {
+        var counts = ReadRowCounts(Value(row, "row_counts"));
+
+        return new CloudState
+        {
+            TakenAt = Timestamp(row, "last_snapshot_at"),
+            SchemaVersion = (int)Integer(row, "schema_version"),
+            TotalRows = counts.Values.Sum(),
+            RowCounts = counts,
+        };
+    }
+
     /// <summary>Собирает снапшот из строк всех таблиц.</summary>
+    /// <param name="tables">Строки таблиц: из облака или из архива.</param>
+    /// <param name="takenAt">Момент снимка.</param>
+    /// <param name="schemaVersion">
+    /// Версия схемы снимка. У архива она своя: облачную копию могли сделать
+    /// прошлой версией приложения, и подменять её текущей нельзя.
+    /// </param>
     public static SyncSnapshot Read(
         IReadOnlyDictionary<string, IReadOnlyList<Dictionary<string, JsonElement>>> tables,
-        DateTimeOffset takenAt)
+        DateTimeOffset takenAt,
+        int schemaVersion = DatabaseSchemaVersion)
     {
         ArgumentNullException.ThrowIfNull(tables);
 
         return new SyncSnapshot
         {
-            SchemaVersion = DatabaseSchemaVersion,
+            SchemaVersion = schemaVersion,
             TakenAt = takenAt,
             IngredientCategories = Rows(tables, SyncTables.IngredientCategories).Select(ReadIngredientCategory).ToList(),
             RecipeCategories = Rows(tables, SyncTables.RecipeCategories).Select(ReadRecipeCategory).ToList(),
@@ -82,13 +145,38 @@ public static class SnapshotReader
         };
     }
 
-    /// <summary>Версия схемы, которую понимает приложение.</summary>
+    /// <summary>Версия схемы снапшота, которую понимает приложение.</summary>
+    /// <remarks>
+    /// Не <c>DatabaseMigrator.CurrentVersion</c>: v16 добавляет триггеры и строку
+    /// в <c>app_settings</c>, а состав и колонки облачных таблиц не меняются.
+    /// Держим 15, пока форма снапшота действительно не изменится, иначе старая
+    /// версия приложения не прочитает новую выгрузку без всякой на то причины.
+    /// </remarks>
     public const int DatabaseSchemaVersion = 15;
 
     private static IReadOnlyList<Dictionary<string, JsonElement>> Rows(
         IReadOnlyDictionary<string, IReadOnlyList<Dictionary<string, JsonElement>>> tables,
         string table) =>
         tables.TryGetValue(table, out var rows) ? rows : Array.Empty<Dictionary<string, JsonElement>>();
+
+    private static IReadOnlyDictionary<string, int> ReadRowCounts(JsonElement value)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            return counts;
+        }
+
+        foreach (var property in value.EnumerateObject())
+        {
+            if (property.Value.TryGetInt32(out var count))
+            {
+                counts[property.Name] = count;
+            }
+        }
+
+        return counts;
+    }
 
     private static SyncIngredientCategory ReadIngredientCategory(Dictionary<string, JsonElement> row) => new()
     {
