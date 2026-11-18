@@ -11,6 +11,8 @@
     <AssemblyTitle>Sweet Taste</AssemblyTitle>
     <Company>Sweet Taste</Company>
     <Description>Офлайн-приложение для кондитера: рецепты, заказы и отчёты.</Description>
+    <RepositoryUrl>https://github.com/Demotiv/sweet-taste</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <ApplicationIcon>Assets\sweet-taste.ico</ApplicationIcon>
   </PropertyGroup>
 

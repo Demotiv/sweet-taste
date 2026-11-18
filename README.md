@@ -5,6 +5,9 @@ Windows · .NET 8 · Avalonia UI · SQLite.
 
 Текущий этап и решения: см. [PLAN.md](PLAN.md).
 
+Репозиторий: [github.com/Demotiv/sweet-taste](https://github.com/Demotiv/sweet-taste)
+· [релизы](https://github.com/Demotiv/sweet-taste/releases).
+
 ## Что уже работает
 
 ### Ингредиенты и закупки
@@ -99,6 +102,8 @@ Windows · .NET 8 · Avalonia UI · SQLite.
 
 Готовый архив для Windows: `dist/SweetTaste-0.1.0-alpha.2-win-x64.zip` (рядом `.sha256`).
 Установка не нужна, .NET 8 ставить не нужно — распакуйте и запустите `SweetTaste.exe`.
+
+Опубликованный релиз: [Sweet Taste 0.1.0-alpha.2](https://github.com/Demotiv/sweet-taste/releases/tag/v0.1.0-alpha.2).
 
 - Ярлык на рабочий стол: `CreateShortcut.cmd` в папке программы.
 - Обновление: закройте приложение и перетащите новый ZIP на `Update.cmd`.
