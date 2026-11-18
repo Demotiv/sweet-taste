@@ -172,6 +172,33 @@
         </StackPanel>
       </Border>
 
+      <!-- ================= обновления ================= -->
+      <Border Classes="card" Padding="20,18">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Обновления"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="18"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="Проверка новых версий на GitHub" />
+          </StackPanel>
+
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel Spacing="3">
+              <TextBlock Text="{Binding VersionText}" FontSize="13" FontWeight="SemiBold" />
+              <TextBlock Classes="muted"
+                         TextWrapping="Wrap"
+                         Text="Проверка идёт через ленту релизов GitHub. Если доступна новая версия, сверху появится баннер с кнопкой «Обновить»." />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Theme="{StaticResource SecondaryButton}"
+                    Content="Проверить обновления"
+                    Command="{Binding CheckUpdatesCommand}"
+                    VerticalAlignment="Center" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
       <!-- ================= опасная зона ================= -->
       <Border Classes="card"
               Padding="20,18"

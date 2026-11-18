@@ -340,6 +340,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         else if (page is SettingsViewModel settingsPage)
         {
             settingsPage.OrdersChanged += LoadReminder;
+            settingsPage.CheckUpdatesRequested += () => _ = CheckForUpdatesAsync(manual: true);
         }
 
         CurrentPage = page;

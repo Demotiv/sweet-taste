@@ -52,21 +52,35 @@ jobs:
               throw "Не найден архив $zip."
           }
 
+          # Постоянные имена для ссылки «Скачать» на главной странице репозитория.
+          $stableZip = "dist/SweetTaste-win-x64.zip"
+          $stableHash = "$stableZip.sha256"
+          Copy-Item -LiteralPath $zip -Destination $stableZip -Force
+          $hashValue = ((Get-Content -LiteralPath $hash -Raw).Trim() -split '\s+')[0]
+          [System.IO.File]::WriteAllText(
+              $stableHash,
+              "$hashValue  SweetTaste-win-x64.zip`r`n",
+              (New-Object System.Text.UTF8Encoding($false)))
+
           gh release view $tag --json tagName 2>$null | Out-Null
 
           if ($LASTEXITCODE -eq 0) {
-              gh release upload $tag $zip $hash --clobber
+              gh release upload $tag $zip $hash $stableZip $stableHash --clobber
           } else {
               $arguments = @(
                   'release', 'create', $tag,
                   $zip,
                   $hash,
+                  $stableZip,
+                  $stableHash,
                   '--verify-tag',
                   '--title', "Sweet Taste $version"
               )
 
               if ($version -match '-') {
                   $arguments += '--prerelease'
+              } else {
+                  $arguments += '--latest'
               }
 
               if (Test-Path -LiteralPath $notes) {

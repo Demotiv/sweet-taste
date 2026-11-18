@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Xml.Linq;
 using SweetTaste.Core.Updates;
 
 namespace SweetTaste.Desktop.Updates;
@@ -26,6 +27,7 @@ public sealed class UpdateService : IDisposable
 {
     private const string Repository = "Demotiv/sweet-taste";
     private const string ReleasesUrl = $"https://api.github.com/repos/{Repository}/releases?per_page=20";
+    private const string ReleasesAtomUrl = $"https://github.com/{Repository}/releases.atom";
 
     private readonly HttpClient _http;
 
@@ -48,6 +50,74 @@ public sealed class UpdateService : IDisposable
         File.Exists(Path.Combine(AppDirectory, "SweetTaste.exe"));
 
     public async Task<AppUpdate?> GetLatestAsync(CancellationToken cancellationToken = default)
+    {
+        // Atom-лента не расходует лимит GitHub API. Если она недоступна,
+        // используем официальный API как запасной вариант.
+        try
+        {
+            var fromAtom = await GetLatestFromAtomAsync(cancellationToken);
+            if (fromAtom is not null)
+            {
+                return fromAtom;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Переходим к API.
+        }
+
+        return await GetLatestFromApiAsync(cancellationToken);
+    }
+
+    private async Task<AppUpdate?> GetLatestFromAtomAsync(CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
+
+        var xml = await _http.GetStringAsync(ReleasesAtomUrl, timeout.Token);
+        var document = XDocument.Parse(xml);
+        XNamespace atom = "http://www.w3.org/2005/Atom";
+
+        AppUpdate? latest = null;
+
+        foreach (var entry in document.Root?.Elements(atom + "entry") ?? Enumerable.Empty<XElement>())
+        {
+            var pageUrl = entry.Elements(atom + "link")
+                .FirstOrDefault(link => string.Equals(
+                    (string?)link.Attribute("rel"), "alternate", StringComparison.OrdinalIgnoreCase))?
+                .Attribute("href")?
+                .Value;
+
+            if (string.IsNullOrWhiteSpace(pageUrl))
+            {
+                continue;
+            }
+
+            var tag = pageUrl.TrimEnd('/').Split('/').LastOrDefault() ?? string.Empty;
+            if (!UpdateVersion.TryParse(tag, out var version))
+            {
+                continue;
+            }
+
+            if (latest is not null && version.CompareTo(latest.Version) <= 0)
+            {
+                continue;
+            }
+
+            var versionText = version.ToString();
+            var assetRoot = $"https://github.com/{Repository}/releases/download/{tag}/";
+            latest = new AppUpdate(
+                version,
+                tag,
+                assetRoot + $"SweetTaste-{versionText}-win-x64.zip",
+                assetRoot + $"SweetTaste-{versionText}-win-x64.zip.sha256",
+                pageUrl);
+        }
+
+        return latest;
+    }
+
+    private async Task<AppUpdate?> GetLatestFromApiAsync(CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));

@@ -20,6 +20,11 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
     /// <summary>Сообщает главному окну, что заказы изменились (напоминание о выдачах).</summary>
     public event Action? OrdersChanged;
 
+    /// <summary>Просит главное окно проверить обновления вручную.</summary>
+    public event Action? CheckUpdatesRequested;
+
+    public string VersionText => AppInfo.VersionLine;
+
     public SettingsViewModel(SettingsService settings, OrderService orders)
     {
         _settings = settings;
@@ -243,6 +248,9 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
             desktop.Shutdown();
         }
     }
+
+    [RelayCommand]
+    private void CheckUpdates() => CheckUpdatesRequested?.Invoke();
 
     [RelayCommand]
     private void OpenBackupFolder()

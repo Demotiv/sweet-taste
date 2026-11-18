@@ -3,6 +3,10 @@
 Офлайн-приложение для кондитера: ингредиенты, закупки, рецепты, заказы, упаковка и отчёты.
 Windows · .NET 8 · Avalonia UI · SQLite.
 
+> **Скачать для Windows:** [SweetTaste-win-x64.zip](https://github.com/Demotiv/sweet-taste/releases/latest/download/SweetTaste-win-x64.zip)
+> · [SHA-256](https://github.com/Demotiv/sweet-taste/releases/latest/download/SweetTaste-win-x64.zip.sha256)
+> · [все релизы](https://github.com/Demotiv/sweet-taste/releases)
+
 Текущий этап и решения: см. [PLAN.md](PLAN.md).
 
 Репозиторий: [github.com/Demotiv/sweet-taste](https://github.com/Demotiv/sweet-taste)
@@ -82,6 +86,7 @@ Windows · .NET 8 · Avalonia UI · SQLite.
 - Восстановление базы из файла с автоматическим бэкапом текущей версии.
 - Масштаб интерфейса 90–125%.
 - Значения по умолчанию для новых рецептов: наценка и единица выхода.
+- Проверка обновлений: кнопка «Проверить обновления» и версия приложения.
 - Опасная зона «Удаление заказов»: очистка архива или всех заказов; отчёты строятся по заказам, поэтому очищаются вместе с ними.
 
 ### Профиль
@@ -98,12 +103,12 @@ Windows · .NET 8 · Avalonia UI · SQLite.
 - Единый стиль: скругления, выравнивание полей, аккуратные поповеры.
 - Курсор-рука на всём, что нажимается: кнопки, вкладки, календарь, списки.
 
-## Альфа-сборка
+## Сборка для Windows
 
-Готовый архив для Windows: `dist/SweetTaste-0.1.0-alpha.4-win-x64.zip` (рядом `.sha256`).
+Готовый архив для Windows: `dist/SweetTaste-0.2.0-win-x64.zip` (рядом `.sha256`).
 Установка не нужна, .NET 8 ставить не нужно — распакуйте и запустите `SweetTaste.exe`.
 
-Опубликованный релиз: [Sweet Taste 0.1.0-alpha.4](https://github.com/Demotiv/sweet-taste/releases/tag/v0.1.0-alpha.4).
+Опубликованный релиз: [Sweet Taste 0.2.0](https://github.com/Demotiv/sweet-taste/releases/tag/v0.2.0).
 
 - Ярлык на рабочий стол: `CreateShortcut.cmd` в папке программы.
 - Автоматическое обновление: при запуске проверяется GitHub. Если есть новая версия,
@@ -130,11 +135,11 @@ pwsh -File scripts/release.ps1
 ## Релизы на GitHub
 
 - При каждом push в `main` и в pull request GitHub Actions собирает проект и прогоняет тесты.
-- Релиз создаётся тегом версии. Например, для `0.1.0-alpha.4`:
+- Релиз создаётся тегом версии. Например, для `0.2.0`:
 
 ```powershell
-git tag v0.1.0-alpha.4
-git push origin v0.1.0-alpha.4
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 GitHub Actions соберёт self-contained ZIP, посчитает SHA-256 и опубликует релиз
