@@ -958,6 +958,9 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   Проверено вручную на распакованном ZIP: `tools\CreateShortcut.cmd` создаёт ярлык
   с правильными `TargetPath`/`WorkingDirectory`; `tools\Update.cmd` обновляет
   0.6.0 → 0.6.1, создаёт папку `-old-`, сохраняет `tools\`, запускает новую версию.
+  Выпущена версия `0.6.1`: коммит `a3057cf`, тег `v0.6.1`, CI и Release зелёные,
+  релиз помечен latest, ассеты проверены (SHA-256 `db65e569…06c5114e`),
+  стабильная ссылка `releases/latest/download/SweetTaste-win-x64.zip` отдаёт 200.
 
 ## 9. Идеи на будущее
 
