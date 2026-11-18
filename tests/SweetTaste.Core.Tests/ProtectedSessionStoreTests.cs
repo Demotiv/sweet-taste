@@ -1,7 +1,11 @@
+using System.Runtime.Versioning;
 using SweetTaste.Core.Sync;
 
 namespace SweetTaste.Core.Tests;
 
+// DPAPI есть только на Windows, поэтому весь класс помечен как windows-only:
+// иначе анализатор CA1416 ругается на каждый вызов в CI.
+[SupportedOSPlatform("windows")]
 public class ProtectedSessionStoreTests
 {
     private static readonly Guid UserId = Guid.Parse("11111111-2222-3333-4444-555555555555");
