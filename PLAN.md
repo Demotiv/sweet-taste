@@ -547,6 +547,24 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   `%~dp0` уже оканчивается на `\`, поэтому `..` даёт родителя папки `tools`.
   Запускать их нужно из `tools\`, а не из корня — из корня `%~dp0..` укажет на папку
   выше программы.
+- **Привязка данных к аккаунту — целиком серверная.** `user_id` во всех 13 таблицах
+  объявлен `uuid not null default auth.uid() references auth.users (id) on delete cascade`
+  (`001_schema.sql:23` и далее), первичные ключи составные — `(user_id, id)`
+  (`001_schema.sql:27`), у `recipe_ingredients` — `(user_id, recipe_id, ingredient_id)`
+  (`:113`). RLS `own_rows` фильтрует по `user_id = (select auth.uid())`
+  (`002_policies.sql:27-30`). `replace_snapshot` и `archive_snapshot` не принимают
+  `user_id` параметром, а берут `v_user_id := auth.uid()` (`003_sync_rpc.sql:235-246`,
+  `004_snapshot_archive.sql:142`). Клиент аутентифицируется только Bearer-токеном
+  (`SyncService.cs:409-415`), `user_id` в снапшот не попадает (`SnapshotRows.cs:19-20`),
+  из архива сервер его вырезает (`004_snapshot_archive.sql:77-112`).
+- **Следствия для смены аккаунта.** Смена email и пароля у того же аккаунта данные
+  не затрагивает — UUID не меняется; нужен только повторный вход, потому что
+  `sync-session.bin` хранит прежние токены. Удаление аккаунта стирает его данные
+  физически (`on delete cascade` на `auth.users`), а новый аккаунт получает другой UUID
+  и видит пустое облако. Два аккаунта — два независимых облака, но сессия одна
+  (`sync-session.bin`), а локальная база не привязана к аккаунту: в `app_settings`
+  нет ни `user_id`, ни email (`SettingsService.cs:15-19`). Поэтому «Загрузить из облака»
+  под другим аккаунтом заменит локальные данные его данными.
 
 ## 5. Открытые вопросы
 
@@ -559,6 +577,16 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 - остатки на складе;
 - ручная корректировка цены заказа сверх скидки;
 - синхронизация и веб-версия — см. §9.
+
+**Закрыть хелперы `_replace_snapshot_*` от прямого вызова.** Четыре помощника
+`replace_snapshot` (`003_sync_rpc.sql:30, 93, 133, 194`) объявлены `security invoker`
+и выданы роли `authenticated` (`003_sync_rpc.sql:295-309`), при этом принимают
+`p_user_id uuid` аргументом. Записать чужие данные через них нельзя — RLS
+`with check (user_id = (select auth.uid()))` отклонит вставку, — но подставить
+произвольный UUID в сигнатуру технически можно, и защита держится только на политике,
+а не на самой функции. Правильно: `revoke execute on function _replace_snapshot_*(...) from authenticated`
+и оставить доступ только через `replace_snapshot`, которая берёт `v_user_id := auth.uid()`
+(`003_sync_rpc.sql:235-246`). Не срочно: дыры нет, есть лишняя поверхность.
 
 ## 6. Стиль
 
