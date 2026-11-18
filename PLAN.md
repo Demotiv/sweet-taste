@@ -244,7 +244,13 @@ Windows-приложение можно использовать как есть
 - Выгрузка данных: «Профиль → Перенос данных» создаёт консистентную копию через `VACUUM INTO`
   и кладёт рядом `sweet-taste-README.txt` с инструкцией по восстановлению.
 - Публикация: `pwsh -File scripts/release.ps1` → `dist/SweetTaste-<версия>-win-x64.zip` и `.sha256`;
-  внутри self-contained `win-x64` (~102 МБ, ZIP ~46 МБ), `README.txt`, `Update.cmd` и `CreateShortcut.cmd`.
+  внутри self-contained `win-x64` (~102 МБ, ZIP ~46 МБ), `README.txt`, `Update.cmd`,
+  `AutoUpdate.ps1` и `CreateShortcut.cmd`.
+- Автообновление: `UpdateService` читает GitHub Releases, `UpdateVersion` сравнивает версии
+  с pre-release. ZIP качается в `%LOCALAPPDATA%\SweetTaste\updates`, проверяется SHA-256.
+  `AutoUpdate.ps1` ждёт закрытия приложения, копирует базу в `backups\pre-update-<дата>.db`,
+  сохраняет папку как `<имя>-old-<версия>-<дата>`, заменяет файлы и запускает новую версию.
+  Журнал: `%LOCALAPPDATA%\SweetTaste\update.log`.
 - Данные лежат в `%APPDATA%` и не входят в папку приложения, поэтому обновление их не затрагивает.
 - Версия — `<Version>` в `SweetTaste.Desktop.csproj`, `version.json` и подпись внизу бокового меню;
   иконка — `Assets/sweet-taste.ico` (собирается из PT Serif, входит в exe и окно).
