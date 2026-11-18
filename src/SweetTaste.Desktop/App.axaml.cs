@@ -6,6 +6,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using SweetTaste.Core.Services;
 using SweetTaste.Core.Storage;
+using SweetTaste.Core.Sync;
 using SweetTaste.Desktop.Updates;
 using SweetTaste.Desktop.ViewModels;
 using SweetTaste.Desktop.Views;
@@ -38,10 +39,19 @@ public partial class App : Application
             var profile = new ProfileService(database);
             var updates = new UpdateService();
 
+            var supabase = new SupabaseOptions
+            {
+                Url = "https://axifpwdzkxagfzplykcr.supabase.co",
+                PublishableKey = "sb_publishable_0lSKaFUQ5x4v-hvVkKva_g_NOeNO3Gr",
+            };
+            var auth = new SupabaseAuthClient(supabase);
+            var sessions = ProtectedSessionStore.CreateDefault(database.DirectoryPath);
+
             ApplyTheme(settings.Theme);
 
             var viewModel = new MainWindowViewModel(
-                service, recipes, orders, reports, packaging, settings, profile, customers, updates);
+                service, recipes, orders, reports, packaging, settings, profile, customers, updates,
+                auth, sessions);
 
             var window = new MainWindow
             {
@@ -50,7 +60,11 @@ public partial class App : Application
 
             window.Opened += async (_, _) => await viewModel.CheckForUpdatesAsync();
 
-            desktop.Exit += (_, _) => updates.Dispose();
+            desktop.Exit += (_, _) =>
+            {
+                updates.Dispose();
+                auth.Dispose();
+            };
 
             window.ApplyUiScale(settings.UiScalePercent / 100.0);
             desktop.MainWindow = window;

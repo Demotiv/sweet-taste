@@ -14,6 +14,9 @@
     <RepositoryUrl>https://github.com/Demotiv/sweet-taste</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <ApplicationIcon>Assets\sweet-taste.ico</ApplicationIcon>
+    <!-- Приложение собирается только под Windows: DPAPI-хранилище сессии и автообновление. -->
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <TargetPlatformIdentifier>Windows</TargetPlatformIdentifier>
   </PropertyGroup>
 
   <ItemGroup>

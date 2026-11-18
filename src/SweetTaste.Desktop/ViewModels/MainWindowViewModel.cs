@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SweetTaste.Core.Domain;
 using SweetTaste.Core.Services;
+using SweetTaste.Core.Sync;
 using SweetTaste.Core.Updates;
 using SweetTaste.Desktop.Updates;
 
@@ -23,6 +24,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly ProfileService _profile;
     private readonly CustomerService _customers;
     private readonly UpdateService _updates;
+    private readonly SupabaseAuthClient _auth;
+    private readonly ISessionStore _sessions;
     private AppUpdate? _availableUpdate;
     private UpdateVersion? _dismissedUpdateVersion;
     private bool _checkingUpdates;
@@ -101,7 +104,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         SettingsService settings,
         ProfileService profile,
         CustomerService customers,
-        UpdateService updates)
+        UpdateService updates,
+        SupabaseAuthClient auth,
+        ISessionStore sessions)
     {
         _inventory = inventory;
         _recipes = recipes;
@@ -112,6 +117,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _profile = profile;
         _customers = customers;
         _updates = updates;
+        _auth = auth;
+        _sessions = sessions;
         LoadProfile();
         LoadReminder();
         Navigate("ingredients");
@@ -327,7 +334,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             "recipes" => new RecipesViewModel(_recipes, _settings),
             "orders" => new OrdersViewModel(_orders, _recipes, _packaging, _customers),
             "reports" => new ReportsViewModel(_reports),
-            "settings" => new SettingsViewModel(_settings, _orders),
+            "settings" => new SettingsViewModel(_settings, _orders, _auth, _sessions),
             "profile" => new ProfileViewModel(_profile, LoadProfile),
             "trash" => new TrashViewModel(_inventory, _recipes),
             _ => new IngredientsViewModel(_inventory, _packaging),

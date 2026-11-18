@@ -12,8 +12,76 @@
       <StackPanel Spacing="6">
         <TextBlock Classes="display" Text="Настройки" />
         <TextBlock Classes="secondary"
-                   Text="Внешний вид, резервные копии и значения для новых рецептов" />
+                   Text="Синхронизация, внешний вид, резервные копии и значения для новых рецептов" />
       </StackPanel>
+
+      <!-- ================= синхронизация ================= -->
+      <Border Classes="card" Padding="20,18">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Синхронизация"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="18"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       Text="Копия данных в облаке. Приложение работает и без входа — аккаунт нужен только для синхронизации." />
+          </StackPanel>
+
+          <!-- вход не выполнен -->
+          <StackPanel Spacing="12" IsVisible="{Binding !IsSignedIn}">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Email" />
+                <TextBox Text="{Binding SyncEmail}"
+                         Watermark="anna@example.ru"
+                         HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Пароль" />
+                <TextBox Text="{Binding SyncPassword}"
+                         PasswordChar="●"
+                         HorizontalAlignment="Stretch" />
+              </StackPanel>
+            </Grid>
+
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Content="Войти"
+                    Command="{Binding SignInCommand}"
+                    IsEnabled="{Binding !IsSyncBusy}"
+                    HorizontalAlignment="Left" />
+
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       Text="Аккаунт создаётся вручную в панели Supabase. Регистрации в приложении нет." />
+          </StackPanel>
+
+          <!-- вход выполнен -->
+          <Grid ColumnDefinitions="*,Auto"
+                ColumnSpacing="12"
+                IsVisible="{Binding IsSignedIn}">
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Classes="field-label" Text="Вы вошли как" />
+              <TextBlock Text="{Binding SignedInEmail}" FontSize="13" FontWeight="SemiBold" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Theme="{StaticResource SecondaryButton}"
+                    Content="Выйти"
+                    Command="{Binding SignOutCommand}"
+                    VerticalAlignment="Center" />
+          </Grid>
+
+          <TextBlock Classes="secondary"
+                     Text="{Binding SyncMessage}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasSyncMessage}" />
+
+          <TextBlock Classes="error"
+                     Text="{Binding SyncError}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding SyncError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+      </Border>
 
       <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
 

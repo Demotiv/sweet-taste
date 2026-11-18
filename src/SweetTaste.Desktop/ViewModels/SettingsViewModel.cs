@@ -1,20 +1,24 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SweetTaste.Core.Domain;
 using SweetTaste.Core.Services;
+using SweetTaste.Core.Sync;
 
 namespace SweetTaste.Desktop.ViewModels;
 
-/// <summary>Настройки: тема, резервные копии, значения по умолчанию и очистка данных.</summary>
+/// <summary>Настройки: синхронизация, тема, резервные копии, значения по умолчанию и очистка данных.</summary>
 public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
 {
     private readonly SettingsService _settings;
     private readonly OrderService _orders;
+    private readonly SupabaseAuthClient _auth;
+    private readonly ISessionStore _sessions;
     private Action? _confirmAction;
 
     /// <summary>Сообщает главному окну, что заказы изменились (напоминание о выдачах).</summary>
@@ -25,10 +29,16 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
 
     public string VersionText => AppInfo.VersionLine;
 
-    public SettingsViewModel(SettingsService settings, OrderService orders)
+    public SettingsViewModel(
+        SettingsService settings,
+        OrderService orders,
+        SupabaseAuthClient auth,
+        ISessionStore sessions)
     {
         _settings = settings;
         _orders = orders;
+        _auth = auth;
+        _sessions = sessions;
 
         _selectedTheme = ThemeName(settings.Theme);
         _selectedRetention = settings.BackupRetentionDays;
@@ -37,6 +47,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         _selectedScale = settings.UiScalePercent;
         _databasePath = settings.DatabasePath;
         ReloadOrderCounts();
+        RestoreSession();
     }
 
     public IReadOnlyList<string> ThemeOptions { get; } = new[] { "Светлая", "Тёмная", "Как в системе" };
@@ -106,6 +117,30 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
 
     [ObservableProperty]
     private bool _isRestoreCompleted;
+
+    [ObservableProperty]
+    private string _syncEmail = string.Empty;
+
+    [ObservableProperty]
+    private string _syncPassword = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSignedIn;
+
+    [ObservableProperty]
+    private string _signedInEmail = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSyncBusy;
+
+    [ObservableProperty]
+    private string? _syncError;
+
+    [ObservableProperty]
+    private string? _syncMessage;
+
+    [ObservableProperty]
+    private bool _hasSyncMessage;
 
     public string BackupFolder => _settings.BackupDirectory;
 
@@ -251,6 +286,77 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
 
     [RelayCommand]
     private void CheckUpdates() => CheckUpdatesRequested?.Invoke();
+
+    /// <summary>Вход по email и паролю. Пароль после успешного входа стирается.</summary>
+    [RelayCommand]
+    private async Task SignInAsync()
+    {
+        if (IsSyncBusy)
+        {
+            return;
+        }
+
+        var email = SyncEmail.Trim();
+        if (email.Length == 0 || SyncPassword.Length == 0)
+        {
+            SyncError = "Введите email и пароль.";
+            HasSyncMessage = false;
+            return;
+        }
+
+        IsSyncBusy = true;
+        SyncError = null;
+        HasSyncMessage = false;
+
+        try
+        {
+            var session = await _auth.SignInAsync(email, SyncPassword);
+            _sessions.Save(session);
+
+            SyncPassword = string.Empty;
+            SignedInEmail = session.Email;
+            IsSignedIn = true;
+            SyncMessage = "Вход выполнен. Данные выгружаются в облако при закрытии приложения.";
+            HasSyncMessage = true;
+        }
+        catch (AuthException ex)
+        {
+            SyncError = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            SyncError = "Не удалось войти: " + ex.Message;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
+    /// <summary>Выход: сессия удаляется с диска, локальные данные остаются.</summary>
+    [RelayCommand]
+    private void SignOut()
+    {
+        _sessions.Clear();
+        IsSignedIn = false;
+        SignedInEmail = string.Empty;
+        SyncPassword = string.Empty;
+        SyncError = null;
+        SyncMessage = "Вы вышли из аккаунта. Локальные данные не тронуты.";
+        HasSyncMessage = true;
+    }
+
+    private void RestoreSession()
+    {
+        var session = _sessions.Load();
+        if (session is null)
+        {
+            return;
+        }
+
+        SignedInEmail = session.Email;
+        IsSignedIn = true;
+    }
 
     [RelayCommand]
     private void OpenBackupFolder()
