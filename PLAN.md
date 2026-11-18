@@ -471,6 +471,9 @@ Windows-приложение можно использовать как есть
 - 18.11.2026 — установлен GitHub CLI 2.105.0 (winget), вход под `Demotiv`;
   статус CI и ассеты релиза теперь проверяются через `gh run list` и `gh release view`
   вместо парсинга HTML-страницы Actions.
+- 18.11.2026 — экшены workflow обновлены до `actions/checkout@v7` и
+  `actions/setup-dotnet@v6` (Node 24) в `ci.yml` и `release.yml`; проверено,
+  что ломающие изменения этих мажоров проект не затрагивают.
 
 ## 9. Идеи на будущее
 
@@ -558,6 +561,10 @@ Windows-приложение можно использовать как есть
 - Проверка релиза: `gh run list --limit 3` (статус CI/Release) и
   `gh release view v<версия> --json tagName,isPrerelease,assets` (ассеты).
   GitHub CLI 2.105.0 установлен через winget, вход выполнен под `Demotiv`.
+- Экшены workflow: `actions/checkout@v7`, `actions/setup-dotnet@v6` (Node 24).
+  `checkout@v7` блокирует checkout форков в `pull_request_target`/`workflow_run` —
+  эти триггеры не используются. `setup-dotnet@v6` перешёл на ESM; `global.json`
+  в проекте нет, поэтому ужесточение проверки `sdk.version` не затрагивает.
 - Результат: `dist/SweetTaste-0.2.1-win-x64.zip` (~46 МБ)
   и `SweetTaste-0.2.1-win-x64.zip.sha256`.
 - Автообновление: `UpdateService` проверяет Atom-ленту GitHub Releases (запасной вариант — API),
