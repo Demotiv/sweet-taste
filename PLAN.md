@@ -155,7 +155,7 @@
 ингредиенты и закупки → рецепты с весом → клиенты → заказы с упаковкой →
 отчёты с графиками → профиль, тема, бэкапы и выгрузка данных.
 
-Логика — 115 тестов; UI проверен вручную на основных сценариях.
+Логика — 166 тестов; UI проверен вручную на основных сценариях.
 На странице «Ингредиенты» карточка ингредиента открывается нажатием на любую часть строки.
 На странице «Заказы» детали заказа открываются нажатием на любую часть строки.
 Просмотровые окна закрываются кликом по затемнённому фону; формы и подтверждения — нет.
@@ -247,6 +247,13 @@ Windows-приложение можно использовать как есть
 - импорт данных из Excel;
 - экспорт отчётов в Excel/PDF.
 
+Синхронизация с облаком (в работе): схема Supabase создана и защищена RLS, проверена
+через REST. Готовы экспорт снапшота (`Sync/SnapshotExporter.cs`), вход по email/паролю
+(`Sync/SupabaseAuthClient.cs`), DPAPI-хранилище сессии (`Sync/ProtectedSessionStore.cs`)
+и выгрузка в облако (`Sync/SyncService.cs`, в том числе атомарная через RPC) —
+42 теста, всего 166. Функция `replace_snapshot` и четыре помощника применены в облаке
+пятью частями и проверены через REST. Дальше — UI и триггеры синхронизации.
+
 ## 4.1. Технические заметки
 
 - Запуск: `dotnet run --project src/SweetTaste.Desktop`
@@ -283,7 +290,79 @@ Windows-приложение можно использовать как есть
   в code-behind, клики внутри `Button` пропускаются. Так работают ингредиенты, рецепты и заказы.
 - Просмотровые окна закрываются кликом по затемнённому фону через `Views/ModalBackdrop.cs`;
   формы и подтверждения так не закрываются, чтобы не терять введённые данные.
-
+- Облако: Supabase, проект `axifpwdzkxagfzplykcr`, API `https://axifpwdzkxagfzplykcr.supabase.co`.
+  Схема — `supabase/001_schema.sql`, политики — `supabase/002_policies.sql`; оба файла
+  идемпотентны и применяются в этом порядке через SQL Editor панели.
+- В облаке 13 таблиц + `sync_state`; у каждой составной PK `(user_id, id)` и RLS-политика
+  `own_rows` (`for all to authenticated`, `using` + `with check` по `auth.uid()`).
+  `sync_state` — одна строка на пользователя, PK = `user_id` без default.
+- Внешние ключи составные по `(user_id, ...)`, чтобы строки разных пользователей не могли
+  ссылаться друг на друга. Для обнуления ссылки используется `on delete set null (<колонка>)`:
+  обычный `set null` обнулил бы и `user_id`, который объявлен `not null`.
+- `purchases.order_id` намеренно без FK: закупка может быть вне заказа.
+- `service_role` / secret key в клиент и репозиторий не попадают; в приложении только
+  publishable-ключ. Регистрация закрыта — аккаунт создаётся вручную в панели Supabase.
+- Проверка облака без входа: `GET /rest/v1/<таблица>` с заголовком `apikey` → `200 []`,
+  `POST` → `42501 new row violates row-level security policy`.
+- Снапшот: `Sync/SyncSnapshot.cs` — 12 таблиц бизнес-данных (без `app_settings` и
+  `confectioner_profile`), `RowCounts` и `TotalRows` для сверки после загрузки.
+  `Sync/SnapshotExporter.cs` читает всё в одной транзакции (`BeginTransaction(deferred: true)`),
+  поэтому снапшот согласован. Фото рецепта кодируется в base64 (`PhotoBase64`).
+- Количества в снапшоте — те же масштабированные целые, что в SQLite: `*_milli` для
+  ингредиентов и заказов, но выход рецепта и состав хранятся в тысячных долях
+  (2,5 кг → 2500), а количество в заказе — в целых единицах (2 шт → 2000).
+- Вход: `Sync/SupabaseAuthClient.cs` — `POST /auth/v1/token?grant_type=password` и
+  `grant_type=refresh_token`, заголовок `apikey` с publishable-ключом. Ошибки Supabase
+  (`invalid_credentials`, `email_not_confirmed`, `over_request_rate_limit`) переводятся
+  в русские сообщения через `AuthException` с полем `Code`. Пароль нигде не сохраняется.
+- Сессия: `Sync/ProtectedSessionStore.cs` — файл `sync-session.bin` рядом с базой,
+  зашифрован DPAPI (`DataProtectionScope.CurrentUser`) с энтропией
+  `SweetTaste.Sync.Session.v1`. Запись через временный файл, чтобы обрыв не оставил
+  битую сессию. Повреждённый или чужой файл считается отсутствием входа.
+  Класс помечен `[SupportedOSPlatform("windows")]` — DPAPI есть только на Windows.
+- `AuthSession.IsExpired` считает токен протухшим за минуту до `ExpiresAt` — запас на сеть.
+- Пакет `System.Security.Cryptography.ProtectedData` 8.0.0 добавлен в `SweetTaste.Core.csproj`.
+- Выгрузка: `Sync/SnapshotRows.cs` переводит снапшот в строки облачных таблиц
+  (`user_id` не передаётся — его заполняет `auth.uid()`), `Sync/SyncService.cs` шлёт
+  их в PostgREST. Порядок: удалить все строки пользователя в обратном порядке
+  зависимостей, затем вставить по `SnapshotRows.LoadOrder`, в конце — `sync_state`
+  с `Prefer: resolution=merge-duplicates`.
+- `DELETE` в PostgREST требует условия, поэтому используется `?id=not.is.null`;
+  RLS всё равно ограничивает удаление строками текущего пользователя.
+- Фото уходит в `bytea` как hex с префиксом `\x`; `cost_estimated` — настоящий `boolean`;
+  метки времени — ISO 8601 в UTC с микросекундами, даты — `yyyy-MM-dd`.
+- Ошибки выгрузки — `SyncException` с полем `Table`: 401 → «Сессия истекла»,
+  403 → подсказка про политики, остальное — текст `message` от PostgREST.
+- Атомарная выгрузка: `supabase/003_sync_rpc.sql` создаёт `public.replace_snapshot(
+  p_schema_version, p_taken_at, p_tables)` — `security invoker`, `search_path = public`.
+  Удаляет строки пользователя в обратном порядке зависимостей, вставляет из
+  `jsonb_to_recordset` в прямом (через четыре функции-помощника), пишет `sync_state`
+  и возвращает счётчики строк. Всё в одной транзакции: обрыв сети не оставит
+  облако пустым.
+- `replace_snapshot` доступна только роли `authenticated` (`revoke` у `public` и `anon`).
+  `user_id` берётся из `auth.uid()`, а не из тела запроса. Анонимный вызов даёт
+  `401 permission denied for function replace_snapshot` — это и есть признак того,
+  что функция создана и права выставлены верно (до создания было `404 PGRST202`).
+- Файл `003` применяется пятью частями из `supabase/parts/` (`003_part1..5.sql`),
+  как и `001`. **Резать тело функции нельзя**: часть с открывающей `$fn$` без
+  закрывающей падает с `42601: unterminated dollar-quoted string at or near "$fn$"`
+  ещё до выполнения. Поэтому `replace_snapshot` разложена на четыре
+  функции-помощника (`_replace_snapshot_refs`, `_replace_snapshot_recipes`,
+  `_replace_snapshot_orders`, `_replace_snapshot_packaging`) — каждая часть
+  самостоятельный `create or replace function ... as $fn$ ... end; $fn$;` ≤100 строк,
+  а пятая часть — сборная `replace_snapshot`: проверки, удаление, вызовы
+  помощников, `sync_state`, `revoke`/`grant` для всех пяти функций.
+  Помощники принимают `p_user_id` и `p_tables`, возвращают `jsonb` со счётчиками;
+  `security invoker` у всех, поэтому RLS действует и внутри помощников.
+  Права на помощников тоже сняты с `public`/`anon`: анонимный вызов любого из них
+  даёт `401 permission denied for function ...`.
+- **Редактор SQL в панели Supabase обрезает текст на `$$`** — тело функции
+  открывается и закрывается `$fn$`. Ошибка выглядит как
+  `42601: unterminated dollar-quoted string at or near "$$"` с припиской
+  `-- source: dashboard`. Тот же приём нужен для любой функции в панели.
+- `SyncService.UploadAtomicAsync` шлёт один `POST /rest/v1/rpc/replace_snapshot`
+  и берёт счётчики из ответа сервера; `UploadAsync` (поштучная загрузка) остаётся
+  запасным путём.
 
 ## 5. Открытые вопросы
 
@@ -482,6 +561,53 @@ Windows-приложение можно использовать как есть
   `setup-dotnet@v6`) отработал без ошибок: все шаги успешны, аннотаций нет.
   Скачанный с GitHub ZIP проверен по хешу (`cfab3200…73d61`), распакован и запущен —
   версия 0.3.0, схема 15.
+- 18.11.2026 — создан Supabase-проект `axifpwdzkxagfzplykcr`; регистрация закрыта
+  (`signup_disabled`), email-провайдер включён, аккаунт создан вручную в панели.
+- 18.11.2026 — написаны `supabase/001_schema.sql` (13 таблиц + `sync_state`, составные
+  PK/FK по `(user_id, ...)`, индексы) и `supabase/002_policies.sql` (RLS `own_rows`).
+- 18.11.2026 — схема применена в облаке четырьмя частями (лимит редактора ~100 строк).
+  Проверено через REST: `GET` по всем 13 таблицам → `200 []`, `POST` → `42501`
+  (RLS блокирует анонимную запись). `app_settings` и `confectioner_profile` в облако не попали.
+- 18.11.2026 — аудит схемы выявил дефект: `on delete set null` на составном FK обнулял
+  и `user_id` (NOT NULL), из-за чего удаление категории, рецепта, клиента или упаковки
+  падало бы с not-null violation. Исправлено на `on delete set null (<колонка>)`
+  (Postgres 15+) в шести FK: `ingredients`, `recipes`, `orders`, `order_items`,
+  `packaging_items`, `order_packaging`. Ограничения пересозданы в облаке, файл `001` обновлён.
+- 18.11.2026 — `002_policies.sql` сделан идемпотентным: перед каждым `create policy`
+  добавлен `drop policy if exists`, повторный запуск больше не падает.
+- 18.11.2026 — шаг 1 синхронизации: `Sync/SyncSnapshot.cs` (12 таблиц бизнес-данных,
+  `RowCounts`, `TotalRows`) и `Sync/SnapshotExporter.cs` — чтение всей базы в одной
+  транзакции. Фото рецепта уходит в base64, настройки устройства и профиль в снапшот
+  не попадают. 9 тестов, всего 124.
+- 18.11.2026 — шаг 2 синхронизации: `Sync/SupabaseOptions.cs` (`SupabaseOptions`,
+  `AuthSession`, `AuthException`), `Sync/SupabaseAuthClient.cs` (вход по паролю и
+  обновление сессии, русские сообщения об ошибках) и `Sync/ProtectedSessionStore.cs`
+  (сессия в `sync-session.bin`, DPAPI под текущего пользователя Windows).
+  Добавлен пакет `System.Security.Cryptography.ProtectedData` 8.0.0. 20 тестов, всего 144.
+- 18.11.2026 — шаг 3 синхронизации: `Sync/SnapshotRows.cs` (снапшот → строки облачных
+  таблиц, порядок загрузки по зависимостям) и `Sync/SyncService.cs` (очистка таблиц
+  пользователя и вставка через PostgREST, запись `sync_state`). 13 тестов, всего 157.
+- 18.11.2026 — шаг 4 синхронизации: `supabase/003_sync_rpc.sql` — функция
+  `replace_snapshot`, атомарная замена снапшота в одной транзакции (удаление,
+  вставка из `jsonb_to_recordset`, `sync_state`, возврат счётчиков). Файл разбит
+  на части в `supabase/parts/`. В `SyncService` добавлен `UploadAtomicAsync`
+  (один вызов RPC). 9 тестов, всего 166. В облаке функция ещё не применена.- 18.11.2026 — первая попытка применить `003_part1.sql` упала с
+  `42601: unterminated dollar-quoted string at or near "$$"`: редактор панели
+  обрезает текст на `$$`. Тело функции переписано на `$fn$`, части
+  перегенерированы (200 строк → 63/42/45/50).
+- 18.11.2026 — вторая попытка упала с `42601` на строке `as $fn$`: часть 1
+  содержала открывающую кавычку тела без закрывающей, Postgres отвергает
+  оператор целиком. Вывод: тело функции резать нельзя. `replace_snapshot`
+  разложена на четыре функции-помощника по группам таблиц
+  (`_replace_snapshot_refs`, `_replace_snapshot_recipes`, `_replace_snapshot_orders`,
+  `_replace_snapshot_packaging`) и сборную пятую часть; каждая часть —
+  законченный `create or replace function` (83/39/60/41/82 строки).
+  `003_sync_rpc.sql` пересобран как полный текст всех пяти частей (309 строк).
+- 18.11.2026 — все пять частей применены в облаке, каждая вернула
+  `Success. No rows returned`. Проверка через REST: `POST /rest/v1/rpc/replace_snapshot`
+  без входа → `401 permission denied for function replace_snapshot` (было `404 PGRST202`),
+  то же для четырёх помощников. `GET` по таблицам → `200 []`, облако чистое.
+  Функция синхронизации готова к работе из приложения.
 
 ## 9. Идеи на будущее
 
