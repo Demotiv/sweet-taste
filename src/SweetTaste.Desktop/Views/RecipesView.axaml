@@ -270,7 +270,7 @@
 
     <!-- ================= просмотр рецепта ================= -->
     <Grid Grid.RowSpan="3" IsVisible="{Binding IsPreviewOpen}" Margin="-16" Background="Transparent">
-      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border x:Name="PreviewBackdrop" Background="{DynamicResource DimBrush}" CornerRadius="16" />
       <Border Classes="dialog"
               Width="860"
               MaxHeight="800"

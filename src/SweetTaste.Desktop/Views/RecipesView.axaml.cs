@@ -14,6 +14,8 @@ public partial class RecipesView : UserControl
     public RecipesView()
     {
         InitializeComponent();
+
+        ModalBackdrop.CloseOnClick(PreviewBackdrop, data => (data as RecipesViewModel)?.ClosePreviewCommand);
     }
 
     private async void OnPickRecipePhoto(object? sender, RoutedEventArgs e)
