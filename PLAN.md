@@ -339,7 +339,16 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 `security_invoker = true`, грант только `authenticated`.
 Сверка с десктопом сошлась до копейки: `Тест` — `cost_per_unit = 7.6041666…`,
 `price_per_unit = 16`; `Тортик` — `cost_per_unit = 31.3613333…`, `price_per_unit = 32`.
-Следующий шаг — каркас PWA в `sweet-taste-web`.
+
+Мобильный клиент, шаг 2 готов: каркас PWA в отдельном репозитории
+`https://github.com/Demotiv/sweet-taste-web` (Vite + React 19 + TS + `@supabase/supabase-js`).
+Вход по email/паролю через Supabase Auth (регистрации нет), экран рецептов читает
+`recipe_costs`, `recipe_categories` и `sync_state`; цена за единицу и себестоимость
+форматируются как в десктопе (`moneySmart`, `unitPrice`), дата снапшота показана под заголовком.
+Стиль — токены «Патиссерии», Lora + Manrope. `npm run build` и `npm run lint` проходят.
+Проверено в браузере на реальном аккаунте: `Тест` — 7,60 ₽ / 16 ₽ за кг,
+`Тортик` — 31,36 ₽ / 32 ₽ за кг, совпадает с десктопом.
+Следующий шаг — карточка рецепта с составом и фото.
 
 ## 4.1. Технические заметки
 
@@ -598,6 +607,17 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   `Тест` — `batch_cost = 24333.3333…`, `cost_per_unit = 7.6041666…`, `price_per_unit = 16`;
   `Тортик` — `batch_cost = 78403.3333…`, `cost_per_unit = 31.3613333…`, `price_per_unit = 32`.
   Дублировать формулу в TypeScript нельзя: два источника истины разойдутся на округлении.
+- **Веб-клиент `sweet-taste-web` — отдельный репозиторий, свой тулчейн.**
+  Vite + React 19 + TS, `@supabase/supabase-js`; ключ и URL берутся из
+  `VITE_SUPABASE_URL` / `VITE_SUPABASE_KEY` (`.env.local` локально, `env.example`
+  в репозитории). В клиенте только publishable-ключ — `service_role` не появляется никогда.
+  Чтение: `recipe_costs`, `recipe_categories`, `sync_state`; запись не выполняется.
+  Форматы повторяют десктоп: `moneySmart` (без копеек, если сумма целая),
+  `unitPrice` (для «г» — с копейками), `quantity` (`0.###` + единица).
+  **Версии зафиксированы под Node 20.15:** Vite 7 (не 8 — rolldown-биндинг не грузится),
+  `@vitejs/plugin-react` 5, `oxlint` 0.16 (1.x падает на нативном биндинге).
+  Обновление до Vite 8 требует Node 22 LTS.
+  Во вью `recipe_costs` нет числа ингредиентов — карточка списка его не показывает.
 
 ## 5. Открытые вопросы
 
@@ -1037,6 +1057,12 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   `Тест` — `cost_per_unit = 7.6041666…`, `price_per_unit = 16`;
   `Тортик` — `cost_per_unit = 31.3613333…`, `price_per_unit = 32`.
   Следующий шаг — каркас PWA в `sweet-taste-web`.
+- 19.11.2026 — каркас PWA собран в `D:\OpenCode\sweet-taste-web`: Vite + React 19 + TS,
+  вход по email/паролю, экран рецептов с ценой из `recipe_costs`, токены «Патиссерии»,
+  Lora + Manrope. `npm run build` и `npm run lint` проходят. Проверено в браузере
+  на реальном аккаунте: `Тест` — 7,60 ₽ / 16 ₽ за кг, `Тортик` — 31,36 ₽ / 32 ₽ за кг,
+  совпадает с десктопом. Версии зафиксированы под Node 20.15: Vite 7, plugin-react 5,
+  oxlint 0.16. Следующий шаг — карточка рецепта с составом и фото.
 
 ## 9. Идеи на будущее
 
@@ -1045,7 +1071,7 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 
 ### 9.1. Мобильный клиент: веб-интерфейс и PDF-меню
 
-**Статус: решение принято, работа не начата.**
+**Статус: шаг 1 (вью `recipe_costs`) и шаг 2 (каркас PWA) готовы.**
 
 **Зачем.** Кондитер не за ноутбуком, клиент пишет в Telegram «хочу торт такой-то».
 Нужно быстро открыть приложение с телефона, посмотреть рецепты и цены, собрать
@@ -1066,7 +1092,8 @@ Mini App — тот же сайт в webview Telegram, плюс SDK `Telegram.We
 
 **Стек.**
 - Фронтенд: React + TypeScript + Vite, mobile-first, токены «Патиссерии»,
-  PT Serif + Fira Sans (обе OFL, встраивать легально).
+  Lora + Manrope в интерфейсе (как в макете `docs/style/preview.html`);
+  PT Serif + Fira Sans — для PDF (обе OFL, встраивать легально).
 - Бэкенд: Supabase как есть — PostgREST + RLS. Отдельный сервер не нужен.
 - Хостинг: Cloudflare Pages, **свой домен** (`*.pages.dev` режется в РФ).
 - PDF: `pdf-lib` + `@pdf-lib/fontkit` **на клиенте**. Серверный рендер
@@ -1122,13 +1149,14 @@ pricePerUnit  = ceil_по_единице( costPerUnit × (1 + markup/100) ) (Rec
    карточки будут по 200–400 КБ каждая.
 
 **Этапы.**
-1. Каркас PWA: навигация, тема, вход по email/паролю, деплой на Pages.
-2. Вью `recipe_costs` + экран рецептов с ценой. **Сверка с десктопом до копейки** —
-   если не совпало, чинить вью, пока это дёшево.
+1. ~~Каркас PWA: навигация, тема, вход по email/паролю, деплой на Pages.~~
+   Готово, кроме деплоя: вход и экран рецептов работают локально.
+2. ~~Вью `recipe_costs` + экран рецептов с ценой.~~ Готово, сверка сошлась до копейки.
 3. Фото в Storage, карточки меню по категориям.
 4. PDF меню через `pdf-lib`.
 5. Расчёт заказа в PDF (упаковка, скидка).
 6. Mini App: бот, домен в BotFather, Edge Function для `initData`.
+7. Деплой на Cloudflare Pages (свой домен).
 
 **Риски.**
 - **Свежесть данных.** Облако обновляет только desktop. Не выгружали два дня —
