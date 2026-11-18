@@ -317,6 +317,14 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 «Есть невыгруженные изменения.», выгрузка уходит в порядке «архив → замена»
 (59 → 61 строка, прежнее состояние сохранено в историю).
 
+Версия `0.6.1` собрана: служебные файлы (`README.txt`, `Update.cmd`, `Update.ps1`,
+`AutoUpdate.ps1`, `CreateShortcut.cmd`) переехали в подпапку `tools\`, в корне ZIP
+остались только `SweetTaste.exe`, `createdump.exe`, два `.json` рантайма и `version.json`.
+В корне 229 файлов (219 `.dll`, 2 `.exe`, 3 `.json`). 208 тестов.
+Проверено вручную на распакованном ZIP: `tools\CreateShortcut.cmd` создаёт ярлык
+с правильными `TargetPath` и `WorkingDirectory`; `tools\Update.cmd` обновляет
+0.6.0 → 0.6.1, создаёт папку `-old-`, сохраняет `tools\` и запускает новую версию.
+
 ## 4.1. Технические заметки
 
 - Запуск: `dotnet run --project src/SweetTaste.Desktop`
@@ -521,6 +529,24 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 - Список версий — `ArchiveOption` (в конце `SettingsViewModel.cs`, как `OrderRecipeOption`
   в `OrdersViewModel.cs`): поля `Info` и `Text`, `ToString()` отдаёт `Text`, поэтому
   `ComboBox` показывает версию без `ItemTemplate`.
+- **Раскладка ZIP с 0.6.1: служебные файлы в `tools\`.** `README.txt`, `Update.cmd`,
+  `Update.ps1`, `AutoUpdate.ps1`, `CreateShortcut.cmd` лежат в подпапке, в корне —
+  только `SweetTaste.exe`, `createdump.exe`, два `.json` рантайма и `version.json`.
+  `scripts/release.ps1` создаёт `$toolsDir` и копирует туда пять файлов, текстовые
+  правки (`Set-ReleaseTextFile`) идут по тому же пути.
+- **`AutoUpdate.ps1` ищется в двух местах.** `UpdateService.UpdaterScriptPath` проверяет
+  корень, затем `tools\`; `CanSelfUpdate` — это `UpdaterScriptPath is not null`.
+  Двойной поиск нужен для перехода: версия 0.6.0 ищет скрипт только в корне, и без
+  запасного пути она не увидела бы обновление. `StartUpdater` берёт скрипт из
+  `UpdaterScriptPath`, дублирующая проверка убрана.
+- `Update.ps1` и `AutoUpdate.ps1` правок не потребовали: `-AppDir` приходит снаружи
+  (`Update.cmd` передаёт `%~dp0..`, приложение — `AppDirectory`), `version.json`
+  и `SweetTaste.exe` ищутся в `$AppDir`, папка заменяется целиком — подпапка `tools\`
+  переносится автоматически.
+- `Update.cmd` и `CreateShortcut.cmd` считают папку программы как `%~dp0..`:
+  `%~dp0` уже оканчивается на `\`, поэтому `..` даёт родителя папки `tools`.
+  Запускать их нужно из `tools\`, а не из корня — из корня `%~dp0..` укажет на папку
+  выше программы.
 
 ## 5. Открытые вопросы
 
@@ -583,7 +609,7 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 - `src/SweetTaste.Desktop` — Avalonia UI (MVVM), шрифты и стили.
 - `tests/SweetTaste.Core.Tests` — тесты логики.
 - `scripts/release.ps1` — сборка релиза; `scripts/release/` — README, `Update.cmd`, `Update.ps1`,
-  `AutoUpdate.ps1`, ярлык.
+  `AutoUpdate.ps1`, ярлык. В ZIP эти пять файлов попадают в подпапку `tools\`.
 - `dist/` — готовые ZIP и SHA-256; `artifacts/` — промежуточная публикация (оба в `.gitignore`).
 - `supabase/` — схема и RPC облака: `001_schema.sql`, `002_policies.sql`,
   `003_sync_rpc.sql` (выгрузка), `004_snapshot_archive.sql` (история снапшотов);
@@ -918,6 +944,20 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   Выпущена версия `0.6.0`: коммит `ef400e4`, тег `v0.6.0`, CI и Release зелёные,
   ассеты проверены (SHA-256 `f7c04e09…92838ec7`), ZIP на чистой базе создаёт
   схему 16 с 36 триггерами.
+- 18.11.2026 — версия `0.6.1`: служебные файлы переехали в подпапку `tools\`.
+  `scripts/release.ps1` создаёт `$toolsDir` и копирует туда `README.txt`, `Update.cmd`,
+  `Update.ps1`, `AutoUpdate.ps1`, `CreateShortcut.cmd`; текстовые правки идут по тому же
+  пути. `UpdateService` получил `ToolsDirectoryName` и `UpdaterScriptPath` (корень → `tools\`),
+  `CanSelfUpdate` и `StartUpdater` работают через него — версия 0.6.0, которая ищет
+  скрипт только в корне, всё равно увидит обновление. `Update.cmd` и `CreateShortcut.cmd`
+  считают папку программы как `%~dp0..`; `Update.cmd` дополнительно удаляет старую
+  временную копию `Update.ps1` и проверяет, что копия создалась. `README.txt` переписан
+  под новую раскладку, с предупреждением для обновляющихся с 0.6.0.
+  ZIP: 229 файлов (219 `.dll`, 2 `.exe`, 3 `.json`), в корне — `SweetTaste.exe`,
+  `createdump.exe`, два `.json` рантайма и `version.json`. 208 тестов, предупреждений нет.
+  Проверено вручную на распакованном ZIP: `tools\CreateShortcut.cmd` создаёт ярлык
+  с правильными `TargetPath`/`WorkingDirectory`; `tools\Update.cmd` обновляет
+  0.6.0 → 0.6.1, создаёт папку `-old-`, сохраняет `tools\`, запускает новую версию.
 
 ## 9. Идеи на будущее
 
@@ -990,9 +1030,9 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
 
 ### 9.2. Сборка и обновления
 
-**Статус: 0.5.0 опубликована.** Self-contained ZIP `win-x64`, без установщика.
+**Статус: 0.6.1 опубликована.** Self-contained ZIP `win-x64`, без установщика.
 Репозиторий и релизы: `https://github.com/Demotiv/sweet-taste`.
-Релиз `v0.5.0` опубликован как latest вместе с ZIP и SHA-256; CI и Release зелёные.
+Релиз `v0.6.1` опубликован как latest вместе с ZIP и SHA-256; CI и Release зелёные.
 С главной страницы репозитория доступна постоянная ссылка
 `releases/latest/download/SweetTaste-win-x64.zip` — её обновляет release workflow.
 
@@ -1009,15 +1049,20 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   `checkout@v7` блокирует checkout форков в `pull_request_target`/`workflow_run` —
   эти триггеры не используются. `setup-dotnet@v6` перешёл на ESM; `global.json`
   в проекте нет, поэтому ужесточение проверки `sdk.version` не затрагивает.
-- Результат: `dist/SweetTaste-0.4.0-win-x64.zip` (~46 МБ)
-  и `SweetTaste-0.4.0-win-x64.zip.sha256`.
+- Результат: `dist/SweetTaste-0.6.1-win-x64.zip` (~46 МБ)
+  и `SweetTaste-0.6.1-win-x64.zip.sha256`.
 - Автообновление: `UpdateService` проверяет Atom-ленту GitHub Releases (запасной вариант — API),
   `UpdateVersion` сравнивает версии с pre-release, ZIP скачивается с проверкой SHA-256;
   `AutoUpdate.ps1` заменяет файлы после закрытия приложения и запускает новую версию.
   Ручная проверка — в «Настройках», кнопка «Проверить обновления».
-- Внутри: `SweetTaste.exe` (apphost переименован для человека), `version.json`
-  (версия, схема БД, дата), `README.txt`, `Update.cmd`, `Update.ps1`,
-  `AutoUpdate.ps1`, `CreateShortcut.cmd`.
+- Внутри: в корне — `SweetTaste.exe` (apphost переименован для человека), `createdump.exe`,
+  `SweetTaste.Desktop.deps.json`, `SweetTaste.Desktop.runtimeconfig.json`, `version.json`
+  (версия, схема БД, дата); в подпапке `tools\` — `README.txt`, `Update.cmd`, `Update.ps1`,
+  `AutoUpdate.ps1`, `CreateShortcut.cmd`. Всего 229 файлов (219 `.dll`, 2 `.exe`, 3 `.json`).
+- Служебные файлы в `tools\` с версии 0.6.1: `Update.cmd` и `CreateShortcut.cmd` считают
+  папку программы как `%~dp0..`, поэтому запускать их нужно из `tools\`.
+  `UpdateService` ищет `AutoUpdate.ps1` сначала в корне, затем в `tools\` — так версия 0.6.0
+  (которая знает только корень) тоже видит обновление.
 - Self-contained — .NET 8 на компьютере не требуется; только Windows 10/11 x64.
 - Данные лежат в `%APPDATA%\SweetTaste`, поэтому замена папки приложения их не затрагивает.
 - Обновление: автоматически из баннера (проверка GitHub, скачивание, SHA-256,

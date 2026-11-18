@@ -29,6 +29,10 @@ public sealed class UpdateService : IDisposable
     private const string ReleasesUrl = $"https://api.github.com/repos/{Repository}/releases?per_page=20";
     private const string ReleasesAtomUrl = $"https://github.com/{Repository}/releases.atom";
 
+    // Служебные файлы (README, скрипты обновления, ярлык) лежат в подпапке,
+    // чтобы в корне остались только приложение и его компоненты.
+    private const string ToolsDirectoryName = "tools";
+
     private readonly HttpClient _http;
 
     public UpdateService()
@@ -45,8 +49,26 @@ public sealed class UpdateService : IDisposable
         (Environment.ProcessPath is { } path ? Path.GetDirectoryName(path) : AppContext.BaseDirectory)
         ?? AppContext.BaseDirectory;
 
+    // Служебные файлы лежат в подпапке tools, но версии до 0.6.1 держали
+    // AutoUpdate.ps1 в корне: ищем в обоих местах, иначе обновление
+    // с 0.6.0 на 0.6.1 не запустилось бы вовсе.
+    private string? UpdaterScriptPath
+    {
+        get
+        {
+            var inRoot = Path.Combine(AppDirectory, "AutoUpdate.ps1");
+            if (File.Exists(inRoot))
+            {
+                return inRoot;
+            }
+
+            var inTools = Path.Combine(AppDirectory, ToolsDirectoryName, "AutoUpdate.ps1");
+            return File.Exists(inTools) ? inTools : null;
+        }
+    }
+
     public bool CanSelfUpdate =>
-        File.Exists(Path.Combine(AppDirectory, "AutoUpdate.ps1")) &&
+        UpdaterScriptPath is not null &&
         File.Exists(Path.Combine(AppDirectory, "SweetTaste.exe"));
 
     public async Task<AppUpdate?> GetLatestAsync(CancellationToken cancellationToken = default)
@@ -285,13 +307,10 @@ public sealed class UpdateService : IDisposable
 
     public void StartUpdater(string databasePath, DownloadedUpdate download, AppUpdate update)
     {
-        if (!CanSelfUpdate)
-        {
-            throw new InvalidOperationException(
+        var script = UpdaterScriptPath
+            ?? throw new InvalidOperationException(
                 "Автообновление доступно только в собранной версии приложения.");
-        }
 
-        var script = Path.Combine(AppDirectory, "AutoUpdate.ps1");
         var temporaryScript = Path.Combine(
             Path.GetTempPath(),
             $"sweet-taste-update-{Guid.NewGuid():N}.ps1");

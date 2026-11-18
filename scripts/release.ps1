@@ -116,11 +116,16 @@ if (-not (Test-Path -LiteralPath $appExe)) {
     throw 'В папке публикации не нашёлся SweetTaste.exe.'
 }
 
-Copy-Item -LiteralPath (Join-Path $releaseFiles 'README.txt') -Destination $stageDir -Force
-Copy-Item -LiteralPath (Join-Path $releaseFiles 'Update.cmd') -Destination $stageDir -Force
-Copy-Item -LiteralPath (Join-Path $releaseFiles 'Update.ps1') -Destination $stageDir -Force
-Copy-Item -LiteralPath (Join-Path $releaseFiles 'AutoUpdate.ps1') -Destination $stageDir -Force
-Copy-Item -LiteralPath (Join-Path $releaseFiles 'CreateShortcut.cmd') -Destination $stageDir -Force
+# Служебные файлы уходят в подпапку tools: в корне остаются только
+# приложение и его компоненты, чтобы пользователь не путался в списке.
+$toolsDir = Join-Path $stageDir 'tools'
+New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+
+Copy-Item -LiteralPath (Join-Path $releaseFiles 'README.txt') -Destination $toolsDir -Force
+Copy-Item -LiteralPath (Join-Path $releaseFiles 'Update.cmd') -Destination $toolsDir -Force
+Copy-Item -LiteralPath (Join-Path $releaseFiles 'Update.ps1') -Destination $toolsDir -Force
+Copy-Item -LiteralPath (Join-Path $releaseFiles 'AutoUpdate.ps1') -Destination $toolsDir -Force
+Copy-Item -LiteralPath (Join-Path $releaseFiles 'CreateShortcut.cmd') -Destination $toolsDir -Force
 
 $versionJson = [ordered]@{
     product        = 'Sweet Taste'
@@ -145,11 +150,11 @@ function Set-ReleaseTextFile([string]$Path, [bool]$WithBom) {
     [System.IO.File]::WriteAllText($Path, $text, (New-Object System.Text.UTF8Encoding($WithBom)))
 }
 
-Set-ReleaseTextFile (Join-Path $stageDir 'README.txt') $true
-Set-ReleaseTextFile (Join-Path $stageDir 'Update.ps1') $true
-Set-ReleaseTextFile (Join-Path $stageDir 'AutoUpdate.ps1') $true
-Set-ReleaseTextFile (Join-Path $stageDir 'Update.cmd') $false
-Set-ReleaseTextFile (Join-Path $stageDir 'CreateShortcut.cmd') $false
+Set-ReleaseTextFile (Join-Path $toolsDir 'README.txt') $true
+Set-ReleaseTextFile (Join-Path $toolsDir 'Update.ps1') $true
+Set-ReleaseTextFile (Join-Path $toolsDir 'AutoUpdate.ps1') $true
+Set-ReleaseTextFile (Join-Path $toolsDir 'Update.cmd') $false
+Set-ReleaseTextFile (Join-Path $toolsDir 'CreateShortcut.cmd') $false
 
 Write-Host '4/5 ZIP...' -ForegroundColor Yellow
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
