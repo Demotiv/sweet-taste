@@ -468,6 +468,9 @@ Windows-приложение можно использовать как есть
   CI #13 и Release #5 зелёные. В релизе версионный ZIP, постоянные
   `SweetTaste-win-x64.zip` и SHA-256; скачанный с GitHub ZIP проверен по хешу
   (`e7a212dc…b16c6b`), распакован и запущен — версия 0.2.1, схема 15.
+- 18.11.2026 — установлен GitHub CLI 2.105.0 (winget), вход под `Demotiv`;
+  статус CI и ассеты релиза теперь проверяются через `gh run list` и `gh release view`
+  вместо парсинга HTML-страницы Actions.
 
 ## 9. Идеи на будущее
 
@@ -552,6 +555,9 @@ Windows-приложение можно использовать как есть
   `.github/workflows/release.yml` по тегу `v<версия>` собирает ZIP и публикует
   GitHub Release с SHA-256, заметками из `docs/releases/<версия>.md` и постоянными
   `SweetTaste-win-x64.zip` / `.sha256` для ссылки на главной странице.
+- Проверка релиза: `gh run list --limit 3` (статус CI/Release) и
+  `gh release view v<версия> --json tagName,isPrerelease,assets` (ассеты).
+  GitHub CLI 2.105.0 установлен через winget, вход выполнен под `Demotiv`.
 - Результат: `dist/SweetTaste-0.2.1-win-x64.zip` (~46 МБ)
   и `SweetTaste-0.2.1-win-x64.zip.sha256`.
 - Автообновление: `UpdateService` проверяет Atom-ленту GitHub Releases (запасной вариант — API),
