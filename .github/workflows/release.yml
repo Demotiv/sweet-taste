@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}' -replace '^v', ''
+
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+              throw "Неверный тег версии: ${{ github.ref_name }}. Ожидается v0.1.0-alpha.3."
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build release
+        shell: pwsh
+        run: pwsh -File scripts/release.ps1 -Version ${{ steps.version.outputs.version }}
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $tag = "v$version"
+          $zip = "dist/SweetTaste-$version-win-x64.zip"
+          $hash = "$zip.sha256"
+          $notes = "docs/releases/$version.md"
+
+          if (-not (Test-Path -LiteralPath $zip)) {
+              throw "Не найден архив $zip."
+          }
+
+          gh release view $tag --json tagName 2>$null | Out-Null
+
+          if ($LASTEXITCODE -eq 0) {
+              gh release upload $tag $zip $hash --clobber
+          } else {
+              $arguments = @(
+                  'release', 'create', $tag,
+                  $zip,
+                  $hash,
+                  '--verify-tag',
+                  '--title', "Sweet Taste $version",
+                  '--generate-notes'
+              )
+
+              if ($version -match '-') {
+                  $arguments += '--prerelease'
+              }
+
+              if (Test-Path -LiteralPath $notes) {
+                  # Заменяем --generate-notes на собранные вручную заметки.
+                  $arguments = @($arguments | Where-Object { $_ -ne '--generate-notes' })
+                  $arguments += @('--notes-file', $notes)
+              }
+
+              gh @arguments
+          }

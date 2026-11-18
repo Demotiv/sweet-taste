@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sweet Taste — стиль «Патиссерия»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..600&family=Manrope:wght@400..800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#EDE4D8;
+    --surface:#FFFCF8;
+    --surface-2:#F8F2E9;
+    --surface-3:#F2EADD;
+    --ink:#2E211B;
+    --ink-2:#6E5D52;
+    --ink-3:#9C8B7E;
+    --line:#E9DDCE;
+    --line-strong:#DFD0BE;
+    --accent:#B25B39;
+    --accent-dark:#95452A;
+    --accent-soft:#F7E5DC;
+    --caramel:#C98A4B;
+    --sage:#7C8B6B;
+    --success:#4F7A4A;
+    --warning:#B67A22;
+    --danger:#A5433A;
+    --info:#5A7C93;
+    --r-card:14px;
+    --r-control:9px;
+    --shadow-sm:0 1px 2px rgba(46,33,27,.05);
+    --shadow-md:0 10px 30px rgba(46,33,27,.10);
+    --shadow-lg:0 24px 60px rgba(46,33,27,.18);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #F6EFE4 0%, rgba(246,239,228,0) 60%),
+      radial-gradient(900px 500px at 100% 0%, #F1E4D2 0%, rgba(241,228,210,0) 55%),
+      var(--page);
+    color:var(--ink);
+    font-family:"Manrope",-apple-system,Segoe UI,sans-serif;
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+    padding:34px 24px 80px;
+  }
+
+  h1,h2,h3,h4{font-family:"Lora",Georgia,serif;font-weight:600;margin:0;letter-spacing:-0.01em}
+
+  .page-head{
+    max-width:1320px;margin:0 auto 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+  }
+  .page-head .eyebrow{
+    text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:700;color:var(--ink-3);margin-bottom:8px;
+  }
+  .page-head h1{font-size:30px;line-height:1.15}
+  .page-head p{margin:8px 0 0;color:var(--ink-2);font-size:13.5px;max-width:560px;line-height:1.55}
+  .page-head .meta{font-size:12px;color:var(--ink-3);text-align:right;line-height:1.7;white-space:nowrap}
+
+  /* ============ window ============ */
+  .window{
+    max-width:1320px;margin:0 auto;background:var(--surface);border-radius:18px;
+    box-shadow:var(--shadow-lg), 0 0 0 1px rgba(46,33,27,.06);
+    overflow:hidden;display:grid;grid-template-columns:236px 1fr;min-height:760px;
+  }
+
+  /* sidebar */
+  .sidebar{
+    background:var(--surface-2);border-right:1px solid var(--line);
+    padding:22px 16px 18px;display:flex;flex-direction:column;gap:26px;
+  }
+  .brand{display:flex;gap:12px;align-items:center;padding:0 6px}
+  .brand .mark{
+    width:42px;height:42px;border-radius:13px;background:linear-gradient(145deg,#C97A52,#A94F2E);
+    color:#FFF6EF;display:grid;place-items:center;font-family:"Lora",Georgia,serif;font-weight:600;
+    font-size:17px;letter-spacing:.02em;box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 4px 10px rgba(169,79,46,.25);
+  }
+  .brand .name{font-family:"Lora",Georgia,serif;font-size:19px;font-weight:600;line-height:1.1}
+  .brand .sub{font-size:11px;color:var(--ink-3);margin-top:4px;letter-spacing:.02em}
+
+  .nav{display:flex;flex-direction:column;gap:4px}
+  .nav-label{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-3);
+    font-weight:700;padding:0 10px;margin-bottom:8px;
+  }
+  .nav a{
+    display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:10px;
+    color:var(--ink-2);text-decoration:none;font-size:13.5px;font-weight:600;
+  }
+  .nav a svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;opacity:.85}
+  .nav a:hover{background:rgba(46,33,27,.045);color:var(--ink)}
+  .nav a.active{background:var(--accent-soft);color:var(--accent-dark)}
+  .nav a.active svg{opacity:1}
+  .nav .count{
+    margin-left:auto;font-size:11px;font-weight:700;background:#FFF;border:1px solid var(--line);
+    color:var(--ink-2);border-radius:20px;padding:2px 7px;min-width:24px;text-align:center;
+  }
+  .nav a.active .count{background:#fff;border-color:#EBCDBF;color:var(--accent-dark)}
+
+  .sidebar-foot{margin-top:auto;display:flex;flex-direction:column;gap:12px}
+  .profile{
+    display:flex;gap:10px;align-items:center;padding:11px;border-radius:12px;background:#FFFDFA;
+    border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  }
+  .avatar{
+    width:34px;height:34px;border-radius:50%;background:var(--surface-3);color:var(--ink-2);
+    display:grid;place-items:center;font-weight:800;font-size:12.5px;letter-spacing:.02em;
+  }
+  .profile .who{font-size:12.5px;font-weight:700;line-height:1.2}
+  .profile .role{font-size:11px;color:var(--ink-3);margin-top:3px}
+
+  /* main */
+  .main{padding:26px 30px 30px;display:flex;flex-direction:column;gap:22px;min-width:0}
+  .topbar{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
+  .topbar h2{font-size:29px;line-height:1.1}
+  .topbar .sub{margin-top:7px;font-size:13px;color:var(--ink-2)}
+  .topbar .sub b{color:var(--ink);font-weight:700}
+  .top-actions{display:flex;align-items:center;gap:10px;padding-top:4px}
+
+  .search{
+    width:250px;height:38px;border-radius:var(--r-control);border:1px solid var(--line-strong);
+    background:#FFFDFA;display:flex;align-items:center;gap:8px;padding:0 11px;color:var(--ink-3);
+    font-size:12.5px;box-shadow:var(--shadow-sm);
+  }
+  .search svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+  .kbd{
+    margin-left:auto;font-size:10px;border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;color:var(--ink-3);background:var(--surface-2);
+  }
+
+  .btn{
+    height:38px;border-radius:var(--r-control);border:1px solid transparent;padding:0 14px;
+    font-family:inherit;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:7px;
+    cursor:pointer;letter-spacing:.01em;
+  }
+  .btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2}
+  .btn-primary{background:var(--accent);color:#FFF8F3;box-shadow:0 4px 12px rgba(178,91,57,.22)}
+  .btn-primary:hover{background:var(--accent-dark)}
+  .btn-ghost{background:#FFFDFA;border-color:var(--line-strong);color:var(--ink-2)}
+  .btn-ghost:hover{background:var(--surface-2);color:var(--ink)}
+
+  /* summary */
+  .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .stat{
+    background:linear-gradient(180deg,#FFFDFA,#FDF8F1);border:1px solid var(--line);
+    border-radius:var(--r-card);padding:16px 18px;box-shadow:var(--shadow-sm);
+    display:flex;justify-content:space-between;gap:14px;align-items:flex-start;
+  }
+  .stat .label{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);font-weight:700}
+  .stat .value{font-family:"Lora",Georgia,serif;font-size:26px;margin-top:8px;line-height:1}
+  .stat .note{font-size:11.5px;color:var(--ink-3);margin-top:7px}
+  .stat .note b{color:var(--sage);font-weight:700}
+  .stat .icon{
+    width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent-dark);
+    display:grid;place-items:center;flex:none;
+  }
+  .stat .icon svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7}
+
+  /* table card */
+  .card{
+    background:#FFFDFA;border:1px solid var(--line);border-radius:var(--r-card);
+    box-shadow:var(--shadow-sm);overflow:hidden;position:relative;
+  }
+  .card-head{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;
+    padding:16px 20px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#FFFDFA,#FFFBF5);
+  }
+  .card-head h3{font-size:17px}
+  .card-head .hint{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+  .chips{display:flex;gap:6px}
+  .chip{
+    font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;border:1px solid var(--line);
+    color:var(--ink-2);background:#FFFDFA;cursor:pointer;
+  }
+  .chip.active{background:var(--ink);border-color:var(--ink);color:#FFF7EF}
+
+  table{width:100%;border-collapse:collapse}
+  thead th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);
+    font-weight:800;padding:12px 20px;background:#FCF8F1;border-bottom:1px solid var(--line);
+  }
+  thead th.num, tbody td.num{text-align:right}
+  tbody td{padding:14px 20px;border-bottom:1px solid #F1E8DC;vertical-align:middle;font-size:13px}
+  tbody tr:hover{background:#FFFBF4}
+  tbody tr.row-hover{background:#FFFBF4}
+  tbody tr:last-child td{border-bottom:none}
+
+  .product{display:flex;align-items:center;gap:12px;min-width:0}
+  .pavatar{
+    width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;
+    font-size:12px;font-weight:800;letter-spacing:.02em;
+    background:var(--surface-3);color:var(--ink-2);border:1px solid var(--line);
+  }
+  .pavatar.cream{background:#F6EBD9;color:#8B6A3E;border-color:#EBD8BC}
+  .pavatar.berry{background:#F6E1E1;color:#A5433A;border-color:#EBCBCB}
+  .pavatar.sage{background:#E9EDE2;color:#5C6B4C;border-color:#D7DFC9}
+  .pavatar.cocoa{background:#EFE3DA;color:#7A5136;border-color:#E0CDBD}
+  .product .name{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .product .brand{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+  .unit{color:var(--ink-2);font-size:12.5px}
+
+  .price{
+    font-weight:800;color:var(--accent-dark);text-decoration:underline dotted rgba(178,91,57,.5);
+    text-underline-offset:3px;cursor:help;white-space:nowrap;
+  }
+  .price small{font-weight:600;color:var(--ink-3);text-decoration:none;margin-left:3px;font-size:11px}
+  .subline{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+  .icon-btn{
+    width:30px;height:30px;border-radius:8px;border:1px solid transparent;background:transparent;
+    color:var(--ink-3);display:inline-grid;place-items:center;cursor:pointer;margin-left:2px;
+  }
+  .icon-btn:hover{background:var(--surface-2);border-color:var(--line);color:var(--ink)}
+  .icon-btn.danger:hover{background:#FBEDEC;border-color:#F0D3D1;color:var(--danger)}
+  .icon-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7}
+
+  /* popover */
+  .popover{
+    position:absolute;z-index:5;right:24px;top:146px;width:326px;
+    background:#FFFDFA;border-radius:14px;border:1px solid var(--line);
+    box-shadow:var(--shadow-md), 0 0 0 4px rgba(46,33,27,.03);
+    animation:none;
+  }
+  .popover::before{
+    content:"";position:absolute;width:12px;height:12px;background:#FFFDFA;
+    border-left:1px solid var(--line);border-top:1px solid var(--line);
+    transform:rotate(45deg);right:68px;top:-7px;
+  }
+  .pop-head{padding:14px 16px 11px;border-bottom:1px solid var(--line)}
+  .pop-head .t{font-family:"Lora",Georgia,serif;font-size:15px;font-weight:600}
+  .pop-head .s{font-size:11px;color:var(--ink-3);margin-top:3px}
+  .pop-body{padding:6px 16px 12px}
+  .purchase{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 0;border-bottom:1px dashed #EFE4D5}
+  .purchase:last-child{border-bottom:none}
+  .purchase .when{font-size:12px;font-weight:700;color:var(--ink)}
+  .purchase .where{font-size:11px;color:var(--ink-3);margin-top:2px}
+  .purchase .amount{font-size:12.5px;font-weight:800;text-align:right;white-space:nowrap}
+  .purchase .per{font-size:10.5px;color:var(--ink-3);text-align:right}
+  .order-link{
+    display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:10.5px;font-weight:700;
+    color:var(--info);background:#EEF3F6;border:1px solid #DDE7EC;border-radius:6px;padding:1px 6px;
+    text-decoration:none;
+  }
+  .pop-foot{padding:11px 16px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .pop-foot .avg{font-size:11px;color:var(--ink-3)}
+  .pop-foot .avg b{color:var(--ink);font-size:13px}
+  .link{color:var(--accent-dark);font-size:11.5px;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(178,91,57,.35)}
+  .link:hover{border-color:var(--accent)}
+
+  /* style guide */
+  .guide{max-width:1320px;margin:34px auto 0;display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+  .guide .g-card{background:#FFFDFA;border:1px solid var(--line);border-radius:var(--r-card);padding:20px;box-shadow:var(--shadow-sm)}
+  .g-title{font-family:"Lora",Georgia,serif;font-size:16px;margin-bottom:4px}
+  .g-sub{font-size:11.5px;color:var(--ink-3);margin-bottom:16px}
+  .palette{display:flex;flex-wrap:wrap;gap:10px}
+  .swatch{width:86px}
+  .swatch .c{height:52px;border-radius:10px;border:1px solid rgba(46,33,27,.08)}
+  .swatch .n{font-size:10px;color:var(--ink-3);margin-top:6px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+  .swatch .h{font-size:11px;color:var(--ink-2);font-weight:600}
+
+  .type-row{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px dashed #EFE4D5}
+  .type-row:last-child{border-bottom:none}
+  .type-row .spec{font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+  .display{font-family:"Lora",Georgia,serif;font-size:26px;font-weight:600}
+
+  .comp-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .badge{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:20px;letter-spacing:.02em}
+  .badge.new{background:#EDF2F6;color:#4A6E86;border:1px solid #DCE7EE}
+  .badge.work{background:#FBF1DE;color:#96651A;border:1px solid #F0E1C2}
+  .badge.ready{background:#E9F0E4;color:#4F7A4A;border:1px solid #D9E6D1}
+  .badge.done{background:#F0EBE4;color:#6E5D52;border:1px solid #E4DACD}
+  .badge.cancel{background:#FBEDEC;color:#A5433A;border:1px solid #F0D3D1}
+
+  .note-line{max-width:1320px;margin:22px auto 0;font-size:12px;color:var(--ink-3);line-height:1.6;text-align:center}
+
+  .span-7{grid-column:span 7}
+  .span-5{grid-column:span 5}
+
+  @media (max-width:1100px){
+    .window{grid-template-columns:1fr}
+    .sidebar{display:none}
+    .summary{grid-template-columns:1fr}
+    .guide{grid-template-columns:1fr}
+    .span-7,.span-5{grid-column:span 12}
+    .popover{position:fixed;left:50%;transform:translateX(-50%);right:auto;top:auto;bottom:20px}
+  }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div>
+    <div class="eyebrow">Sweet Taste · направление стиля</div>
+    <h1>«Патиссерия»</h1>
+    <p>Тёплая и спокойная тема: кремовая бумага, шоколадный текст, карамель и терракота.
+       Заголовки — с засечками, интерфейс — чистый и тихий, без толстых рамок и мультяшных анимаций.</p>
+  </div>
+  <div class="meta">Вариант для утверждения<br>Desktop · Windows · Avalonia</div>
+</header>
+
+<div class="window">
+
+  <!-- ================= sidebar ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">ST</div>
+      <div>
+        <div class="name">Sweet Taste</div>
+        <div class="sub">Кондитерская</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">Работа</div>
+
+      <a href="#" class="active">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M4 7l1.5 12.5h13L20 7M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/></svg>
+        Ингредиенты
+        <span class="count">14</span>
+      </a>
+
+      <a href="#">
+        <svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>
+        Рецепты
+        <span class="count">9</span>
+      </a>
+
+      <a href="#">
+        <svg viewBox="0 0 24 24"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6M9 11h4"/></svg>
+        Заказы
+        <span class="count">3</span>
+      </a>
+
+      <a href="#">
+        <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 15v-4M12 15V7M16 15v-6"/></svg>
+        Отчёты
+      </a>
+
+      <div class="nav-label" style="margin-top:18px">Настройки</div>
+
+      <a href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></svg>
+        Напоминания
+      </a>
+
+      <a href="#">
+        <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L14.5 3h-5L9 5.9a7 7 0 0 0-1.7 1L5 5.9 3 9.4 5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1L9.5 21h5l.4-2.9a7 7 0 0 0 1.7-1l2.3 1 2-3.4L19 13c.1-.3.1-.7.1-1Z"/></svg>
+        Настройки
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="profile">
+        <div class="avatar">А</div>
+        <div>
+          <div class="who">Анна Соколова</div>
+          <div class="role">кондитер · локально</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= main ================= -->
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <h2>Ингредиенты</h2>
+        <div class="sub">14 позиций · средняя цена пересчитана по <b>42 закупкам</b></div>
+      </div>
+      <div class="top-actions">
+        <div class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          Найти ингредиент
+          <span class="kbd">Ctrl K</span>
+        </div>
+        <button class="btn btn-ghost">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+          Закупка
+        </button>
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Новый ингредиент
+        </button>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="stat">
+        <div>
+          <div class="label">Потрачено в ноябре</div>
+          <div class="value">18 240 ₽</div>
+          <div class="note">на <b>7% меньше</b>, чем в октябре</div>
+        </div>
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="M8 14l3-4 3 3 4-6"/></svg>
+        </div>
+      </div>
+
+      <div class="stat">
+        <div>
+          <div class="label">Закупок за месяц</div>
+          <div class="value">12</div>
+          <div class="note">последняя — сегодня, «Магнит»</div>
+        </div>
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M6 7h12l-1.2 12H7.2L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+        </div>
+      </div>
+
+      <div class="stat">
+        <div>
+          <div class="label">Дороже всего</div>
+          <div class="value">1 120 ₽</div>
+          <div class="note">сливочное масло · 1 кг</div>
+        </div>
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M12 3v18M7 8.5 12 3l5 5.5"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h3>Справочник</h3>
+          <div class="hint">Наведите на цену, чтобы увидеть историю закупок</div>
+        </div>
+        <div class="chips">
+          <span class="chip active">Все</span>
+          <span class="chip">Молочное</span>
+          <span class="chip">Мука и крупы</span>
+          <span class="chip">Декор</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34%">Ингредиент</th>
+            <th style="width:12%">Единица</th>
+            <th style="width:20%" class="num">Средняя цена</th>
+            <th style="width:24%">Последняя закупка</th>
+            <th style="width:10%"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-hover">
+            <td>
+              <div class="product">
+                <div class="pavatar cream">ТС</div>
+                <div style="min-width:0">
+                  <div class="name">Творожный сыр</div>
+                  <div class="brand">Hochland · сливочный</div>
+                </div>
+              </div>
+            </td>
+            <td class="unit">г</td>
+            <td class="num">
+              <span class="price">0,55 ₽<small>/ г</small></span>
+              <div class="subline">2 закупки · 200 г</div>
+            </td>
+            <td>
+              <div style="font-size:12.5px;font-weight:600">сегодня · Магнит</div>
+              <div class="subline">120 ₽ за 200 г</div>
+            </td>
+            <td>
+              <button class="icon-btn" title="Изменить"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="m13 6 4 4"/></svg></button>
+              <button class="icon-btn danger" title="Удалить"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg></button>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="product">
+                <div class="pavatar cocoa">МП</div>
+                <div>
+                  <div class="name">Мука пшеничная</div>
+                  <div class="brand">Макфа · высший сорт</div>
+                </div>
+              </div>
+            </td>
+            <td class="unit">г</td>
+            <td class="num">
+              <span class="price">0,09 ₽<small>/ г</small></span>
+              <div class="subline">4 закупки · 8 кг</div>
+            </td>
+            <td>
+              <div style="font-size:12.5px;font-weight:600">12.11 · Пятёрочка</div>
+              <div class="subline">179 ₽ за 2 кг</div>
+            </td>
+            <td>
+              <button class="icon-btn" title="Изменить"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="m13 6 4 4"/></svg></button>
+              <button class="icon-btn danger" title="Удалить"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg></button>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="product">
+                <div class="pavatar berry">КЛ</div>
+                <div>
+                  <div class="name">Клубника</div>
+                  <div class="brand">свежая · на торт</div>
+                </div>
+              </div>
+            </td>
+            <td class="unit">г</td>
+            <td class="num">
+              <span class="price">0,48 ₽<small>/ г</small></span>
+              <div class="subline">3 закупки · 1,2 кг</div>
+            </td>
+            <td>
+              <div style="font-size:12.5px;font-weight:600">14.11 · рынок</div>
+              <div class="subline">240 ₽ за 500 г</div>
+            </td>
+            <td>
+              <button class="icon-btn" title="Изменить"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="m13 6 4 4"/></svg></button>
+              <button class="icon-btn danger" title="Удалить"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg></button>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <div class="product">
+                <div class="pavatar sage">СЛ</div>
+                <div>
+                  <div class="name">Сливочное масло</div>
+                  <div class="brand">Простоквашино · 82,5%</div>
+                </div>
+              </div>
+            </td>
+            <td class="unit">г</td>
+            <td class="num">
+              <span class="price">1,12 ₽<small>/ г</small></span>
+              <div class="subline">5 закупок · 1,5 кг</div>
+            </td>
+            <td>
+              <div style="font-size:12.5px;font-weight:600">10.11 · Лента</div>
+              <div class="subline">224 ₽ за 200 г</div>
+            </td>
+            <td>
+              <button class="icon-btn" title="Изменить"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="m13 6 4 4"/></svg></button>
+              <button class="icon-btn danger" title="Удалить"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- popover over the first row -->
+      <div class="popover">
+        <div class="pop-head">
+          <div class="t">Творожный сыр</div>
+          <div class="s">Hochland · сливочный · 0,55 ₽ за грамм</div>
+        </div>
+        <div class="pop-body">
+          <div class="purchase">
+            <div>
+              <div class="when">Сегодня, 16 ноября</div>
+              <div class="where">Магнит</div>
+              <a class="order-link" href="#">заказ № 14</a>
+            </div>
+            <div>
+              <div class="amount">120 ₽</div>
+              <div class="per">200 г · 0,60 ₽/г</div>
+            </div>
+          </div>
+          <div class="purchase">
+            <div>
+              <div class="when">2 ноября</div>
+              <div class="where">Пятёрочка</div>
+            </div>
+            <div>
+              <div class="amount">100 ₽</div>
+              <div class="per">200 г · 0,50 ₽/г</div>
+            </div>
+          </div>
+        </div>
+        <div class="pop-foot">
+          <div class="avg">Средняя <b>0,55 ₽/г</b></div>
+          <a href="#" class="link">Вся история</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ================= style guide ================= -->
+<section class="guide">
+
+  <div class="g-card span-7">
+    <div class="g-title">Палитра</div>
+    <div class="g-sub">Тёплые нейтральные тона, один выразительный акцент</div>
+    <div class="palette">
+      <div class="swatch"><div class="c" style="background:#2E211B"></div><div class="n">Текст</div><div class="h">#2E211B</div></div>
+      <div class="swatch"><div class="c" style="background:#6E5D52"></div><div class="n">Вторичный</div><div class="h">#6E5D52</div></div>
+      <div class="swatch"><div class="c" style="background:#FFFCF8"></div><div class="n">Поверхность</div><div class="h">#FFFCF8</div></div>
+      <div class="swatch"><div class="c" style="background:#F8F2E9"></div><div class="n">Фон</div><div class="h">#F8F2E9</div></div>
+      <div class="swatch"><div class="c" style="background:#E9DDCE"></div><div class="n">Линии</div><div class="h">#E9DDCE</div></div>
+      <div class="swatch"><div class="c" style="background:#B25B39"></div><div class="n">Акцент</div><div class="h">#B25B39</div></div>
+      <div class="swatch"><div class="c" style="background:#C98A4B"></div><div class="n">Карамель</div><div class="h">#C98A4B</div></div>
+      <div class="swatch"><div class="c" style="background:#7C8B6B"></div><div class="n">Шалфей</div><div class="h">#7C8B6B</div></div>
+      <div class="swatch"><div class="c" style="background:#4F7A4A"></div><div class="n">Успех</div><div class="h">#4F7A4A</div></div>
+      <div class="swatch"><div class="c" style="background:#A5433A"></div><div class="n">Ошибка</div><div class="h">#A5433A</div></div>
+    </div>
+  </div>
+
+  <div class="g-card span-5">
+    <div class="g-title">Типографика</div>
+    <div class="g-sub">Lora — заголовки и цифры, Manrope — интерфейс</div>
+    <div class="type-row"><span class="display">Sweet Taste</span><span class="spec">Lora 26 / 600</span></div>
+    <div class="type-row"><span style="font-family:'Lora',Georgia,serif;font-size:17px">Ингредиенты и заказы</span><span class="spec">Lora 17 / 600</span></div>
+    <div class="type-row"><span style="font-weight:700;font-size:13.5px">Средняя цена закупки</span><span class="spec">Manrope 13.5 / 700</span></div>
+    <div class="type-row"><span style="font-size:12px;color:var(--ink-3)">Второстепенная подпись</span><span class="spec">Manrope 11–12</span></div>
+  </div>
+
+  <div class="g-card span-7">
+    <div class="g-title">Компоненты</div>
+    <div class="g-sub">Спокойные состояния: без прыгающих элементов и толстых рамок</div>
+    <div class="comp-row" style="margin-bottom:14px">
+      <button class="btn btn-primary">+ Новый рецепт</button>
+      <button class="btn btn-ghost">История</button>
+      <span class="badge new">Новый</span>
+      <span class="badge work">В работе</span>
+      <span class="badge ready">Готов</span>
+      <span class="badge done">Выдан</span>
+      <span class="badge cancel">Отменён</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div class="search" style="width:230px">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        Поиск по книге
+      </div>
+      <div style="height:38px;flex:1;min-width:180px;border:1px solid var(--line-strong);border-radius:9px;background:#FFFDFA;display:flex;align-items:center;padding:0 11px;color:var(--ink);font-size:12.5px">Творожный сыр</div>
+      <span style="font-size:11.5px;color:var(--ink-3)">Escape — закрыть</span>
+    </div>
+  </div>
+
+  <div class="g-card span-5">
+    <div class="g-title">Принципы</div>
+    <div class="g-sub">Чтобы приложение не мешало работе</div>
+    <ul style="margin:0;padding-left:18px;color:var(--ink-2);font-size:12.5px;line-height:2">
+      <li>Один акцентный цвет — только для главного действия.</li>
+      <li>Никаких анимаций размера текста: только мягкое изменение фона.</li>
+      <li>Данные — главное: таблицы читаются с расстояния вытянутой руки.</li>
+      <li>Тени лёгкие, границы тонкие, скругления 9–14 px.</li>
+      <li>Тёмный шоколадный текст вместо чёрного — меньше контраста, меньше усталости.</li>
+    </ul>
+  </div>
+
+</section>
+
+<div class="note-line">
+  Это макет для утверждения направления. Если понравится — перенесу токены в Avalonia (шрифты Lora и Manrope с кириллицей, встроенные в приложение).
+</div>
+
+</body>
+</html>

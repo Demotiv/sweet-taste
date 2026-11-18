@@ -1,0 +1,259 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SweetTaste.Desktop.ViewModels"
+        x:Class="SweetTaste.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Sweet Taste"
+        Icon="/Assets/sweet-taste.ico"
+        Width="1340"
+        Height="840"
+        MinWidth="1120"
+        MinHeight="700"
+        WindowStartupLocation="CenterScreen">
+
+  <LayoutTransformControl x:Name="ScaleHost">
+  <Grid ColumnDefinitions="236,*">
+
+    <!-- ====== боковое меню ====== -->
+    <Border Grid.Column="0"
+            Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource LineBrush}"
+            BorderThickness="0,0,1,0">
+
+      <Grid RowDefinitions="Auto,*,Auto" Margin="16,22,16,18" RowSpacing="26">
+
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*">
+          <Border Width="42" Height="42" CornerRadius="13">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Color="#C97A52" Offset="0" />
+                <GradientStop Color="#A94F2E" Offset="1" />
+              </LinearGradientBrush>
+            </Border.Background>
+            <TextBlock Text="ST"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold"
+                       Foreground="#FFF6EF"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+          </Border>
+
+          <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Spacing="3">
+            <TextBlock Classes="brand-name" Text="{Binding BrandName}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="muted" Text="Кондитерская" />
+          </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Spacing="4">
+          <TextBlock Classes="overline" Text="РАБОТА" Margin="10,0,0,8" />
+
+          <Button Theme="{StaticResource NavButton}"
+                  Classes="nav"
+                  Classes.active="{Binding IsIngredientsActive}"
+                  Command="{Binding OpenIngredientsCommand}"
+                  ToolTip.Tip="Справочник ингредиентов и закупки">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Path Data="{StaticResource IconIngredients}"
+                    Stroke="{DynamicResource AccentDarkBrush}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round"
+                    Width="17"
+                    Height="17"
+                    Stretch="Uniform"
+                    VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1"
+                         Text="Ингредиенты"
+                         Margin="11,0,0,0"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button Theme="{StaticResource NavButton}"
+                  Classes="nav"
+                  Classes.active="{Binding IsRecipesActive}"
+                  Command="{Binding OpenRecipesCommand}"
+                  ToolTip.Tip="Книга рецептов">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Path Data="{StaticResource IconRecipes}"
+                    Stroke="{DynamicResource InkSecondaryBrush}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round"
+                    Width="17"
+                    Height="17"
+                    Stretch="Uniform"
+                    VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Рецепты" Margin="11,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button Theme="{StaticResource NavButton}"
+                  Classes="nav"
+                  Classes.active="{Binding IsOrdersActive}"
+                  Command="{Binding OpenOrdersCommand}"
+                  ToolTip.Tip="Текущие заказы и архив">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Path Data="{StaticResource IconOrders}"
+                    Stroke="{DynamicResource InkSecondaryBrush}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round"
+                    Width="17"
+                    Height="17"
+                    Stretch="Uniform"
+                    VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Заказы" Margin="11,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button Theme="{StaticResource NavButton}"
+                  Classes="nav"
+                  Classes.active="{Binding IsReportsActive}"
+                  Command="{Binding OpenReportsCommand}"
+                  ToolTip.Tip="Выручка, прибыль и топ позиций">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Path Data="{StaticResource IconReports}"
+                    Stroke="{DynamicResource InkSecondaryBrush}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round"
+                    Width="17"
+                    Height="17"
+                    Stretch="Uniform"
+                    VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Отчёты" Margin="11,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <TextBlock Classes="overline" Text="СЕРВИС" Margin="10,18,0,8" />
+
+          <Button Theme="{StaticResource NavButton}"
+                  Classes="nav"
+                  Classes.active="{Binding IsTrashActive}"
+                  Command="{Binding OpenTrashCommand}"
+                  ToolTip.Tip="Удалённые ингредиенты и рецепты">
+            <Grid ColumnDefinitions="Auto,*">
+              <Path Data="{StaticResource IconTrash}"
+                    Stroke="{DynamicResource InkSecondaryBrush}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round"
+                    Width="17"
+                    Height="17"
+                    Stretch="Uniform"
+                    VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Корзина" Margin="11,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <TextBlock Classes="overline" Text="НАСТРОЙКИ" Margin="10,18,0,8" />
+
+          <Button Theme="{StaticResource NavButton}"
+                  Classes="nav"
+                  Classes.active="{Binding IsSettingsActive}"
+                  Command="{Binding OpenSettingsCommand}"
+                  ToolTip.Tip="Тема, резервные копии и значения по умолчанию">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Path Data="{StaticResource IconSliders}"
+                    Stroke="{DynamicResource InkSecondaryBrush}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    StrokeJoin="Round"
+                    Width="17"
+                    Height="17"
+                    Stretch="Uniform"
+                    VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="Настройки" Margin="11,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Spacing="8">
+        <Button Theme="{StaticResource RowButton}"
+                Command="{Binding OpenProfileCommand}"
+                ToolTip.Tip="Открыть профиль">
+          <Border Background="{DynamicResource SurfaceBrush}"
+                  BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="1"
+                  CornerRadius="12"
+                  Padding="11">
+            <Grid ColumnDefinitions="Auto,*">
+              <Border Width="34"
+                      Height="34"
+                      CornerRadius="17"
+                      ClipToBounds="True"
+                      Background="{DynamicResource BadgeBrush}">
+                <Grid>
+                  <TextBlock Text="{Binding ProfileInitials}"
+                             FontWeight="Bold"
+                             FontSize="12.5"
+                             Foreground="{DynamicResource InkSecondaryBrush}"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding !HasProfilePhoto}" />
+                  <Image Source="{Binding ProfilePhoto}"
+                         Stretch="UniformToFill"
+                         IsVisible="{Binding HasProfilePhoto}" />
+                </Grid>
+              </Border>
+              <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="3">
+                <TextBlock Text="{Binding OwnerName}"
+                           FontSize="12.5"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Classes="muted" Text="локальные данные" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Button>
+        <TextBlock Classes="muted"
+                   Text="{Binding VersionText}"
+                   FontSize="10.5"
+                   HorizontalAlignment="Center"
+                   ToolTip.Tip="Версия установленного альфа-билда" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ====== раздел ====== -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+      <Border IsVisible="{Binding HasStartupReminder}"
+              Background="{DynamicResource AccentSoftBrush}"
+              BorderBrush="{DynamicResource AccentSoftHoverBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Padding="14,9"
+              Margin="30,18,30,0">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+          <TextBlock Text="{Binding StartupReminder}"
+                     FontSize="12.5"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AccentDarkBrush}"
+                     VerticalAlignment="Center" />
+          <Button Grid.Column="1"
+                  Theme="{StaticResource SecondaryButton}"
+                  Content="Открыть заказы"
+                  Padding="10,4"
+                  FontSize="11"
+                  Command="{Binding OpenOrdersCommand}" />
+          <Button Grid.Column="2"
+                  Theme="{StaticResource IconButton}"
+                  Command="{Binding DismissReminderCommand}"
+                  ToolTip.Tip="Скрыть">
+            <Path Data="{StaticResource IconClose}"
+                  Stroke="{Binding $parent[Button].Foreground}"
+                  StrokeThickness="1.7"
+                  StrokeLineCap="Round"
+                  Width="12"
+                  Height="12"
+                  Stretch="Uniform" />
+          </Button>
+        </Grid>
+      </Border>
+      <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
+    </Grid>
+  </Grid>
+  </LayoutTransformControl>
+</Window>

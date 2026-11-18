@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SweetTaste.Desktop.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="SweetTaste.Desktop.Views.TrashView"
+             x:DataType="vm:TrashViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="18" Margin="30,26,30,26">
+
+    <StackPanel Grid.Row="0" Spacing="6">
+      <TextBlock Classes="display" Text="Корзина" />
+      <TextBlock Classes="secondary" Text="{Binding Subtitle}" />
+    </StackPanel>
+
+    <Border Grid.Row="1"
+            Background="{DynamicResource DangerSoftBrush}"
+            BorderBrush="{DynamicResource DangerBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="14,10"
+            IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <TextBlock Classes="error" Text="{Binding Error}" />
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="16">
+
+      <!-- ================= ингредиенты ================= -->
+      <Border Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Margin="20,16,20,14" Spacing="3">
+            <TextBlock Text="Ингредиенты"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="Восстановите позицию или удалите её навсегда" />
+          </StackPanel>
+
+          <Grid Grid.Row="1">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Ingredients}" Margin="4,0,4,14">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TrashIngredientRowViewModel">
+                    <Border Classes="row" Padding="14,10" Margin="0,0,0,8">
+                      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                          <TextBlock Text="{Binding Name}"
+                                     FontSize="13.5"
+                                     FontWeight="Bold"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding CategoryText}" Classes="muted" />
+                          <TextBlock Text="{Binding DeletedText}" Classes="muted" />
+                          <TextBlock Text="{Binding DetailText}" Classes="muted" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Theme="{StaticResource SecondaryButton}"
+                                Content="Восстановить"
+                                Padding="10,4"
+                                FontSize="11"
+                                VerticalAlignment="Center"
+                                Command="{Binding RestoreCommand}" />
+
+                        <Button Grid.Column="2"
+                                Theme="{StaticResource DangerIconButton}"
+                                Command="{Binding DeleteCommand}"
+                                ToolTip.Tip="Удалить навсегда"
+                                VerticalAlignment="Center">
+                          <Path Data="{StaticResource IconTrash}"
+                                Stroke="{Binding $parent[Button].Foreground}"
+                                StrokeThickness="1.6"
+                                StrokeLineCap="Round"
+                                StrokeJoin="Round"
+                                Width="14"
+                                Height="14"
+                                Stretch="Uniform" />
+                        </Button>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Text="Корзина пуста"
+                       Classes="muted"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsEmptyIngredients}" />
+          </Grid>
+        </Grid>
+      </Border>
+
+      <!-- ================= рецепты ================= -->
+      <Border Grid.Column="1" Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Margin="20,16,20,14" Spacing="3">
+            <TextBlock Text="Рецепты"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="Вернутся в книгу вместе с составом" />
+          </StackPanel>
+
+          <Grid Grid.Row="1">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Recipes}" Margin="4,0,4,14">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TrashRecipeRowViewModel">
+                    <Border Classes="row" Padding="14,10" Margin="0,0,0,8">
+                      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <StackPanel Spacing="3">
+                          <TextBlock Text="{Binding Name}"
+                                     FontSize="13.5"
+                                     FontWeight="Bold"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding CategoryText}" Classes="muted" />
+                          <TextBlock Text="{Binding DeletedText}" Classes="muted" />
+                          <TextBlock Text="{Binding DetailText}" Classes="muted" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Theme="{StaticResource SecondaryButton}"
+                                Content="Восстановить"
+                                Padding="10,4"
+                                FontSize="11"
+                                VerticalAlignment="Center"
+                                Command="{Binding RestoreCommand}" />
+
+                        <Button Grid.Column="2"
+                                Theme="{StaticResource DangerIconButton}"
+                                Command="{Binding DeleteCommand}"
+                                ToolTip.Tip="Удалить навсегда"
+                                VerticalAlignment="Center">
+                          <Path Data="{StaticResource IconTrash}"
+                                Stroke="{Binding $parent[Button].Foreground}"
+                                StrokeThickness="1.6"
+                                StrokeLineCap="Round"
+                                StrokeJoin="Round"
+                                Width="14"
+                                Height="14"
+                                Stretch="Uniform" />
+                        </Button>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Text="Корзина пуста"
+                       Classes="muted"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsEmptyRecipes}" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ================= подтверждение ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsConfirmOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border Classes="dialog" Width="480" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="Удалить навсегда?" />
+          <TextBlock Classes="secondary" Text="{Binding ConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}" Content="Отмена" Command="{Binding CancelConfirmCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}" Content="{Binding ConfirmButtonText}" Command="{Binding ConfirmDeleteCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

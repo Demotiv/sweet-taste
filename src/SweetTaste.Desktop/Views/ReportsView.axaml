@@ -1,0 +1,441 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SweetTaste.Desktop.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="SweetTaste.Desktop.Views.ReportsView"
+             x:DataType="vm:ReportsViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="16" Margin="30,26,30,26">
+
+    <!-- ================= шапка ================= -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="18">
+      <StackPanel Spacing="6">
+        <TextBlock Classes="display" Text="Отчёты" />
+        <TextBlock Classes="secondary" Text="{Binding PeriodText}" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <Button Theme="{StaticResource PillButton}"
+                Classes="tab"
+                Classes.active="{Binding OverviewTabActive}"
+                Content="Обзор"
+                Command="{Binding ShowOverviewTabCommand}" />
+        <Button Theme="{StaticResource PillButton}"
+                Classes="tab"
+                Classes.active="{Binding CustomersTabActive}"
+                Content="Клиенты"
+                Command="{Binding ShowCustomersTabCommand}" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <Button Theme="{StaticResource PillButton}"
+                Classes="tab"
+                Classes.active="{Binding WeekActive}"
+                Content="Неделя"
+                Command="{Binding UseWeekCommand}" />
+        <Button Theme="{StaticResource PillButton}"
+                Classes="tab"
+                Classes.active="{Binding MonthActive}"
+                Content="Месяц"
+                Command="{Binding UseMonthCommand}" />
+        <Button Theme="{StaticResource PillButton}"
+                Classes="tab"
+                Classes.active="{Binding YearActive}"
+                Content="Год"
+                Command="{Binding UseYearCommand}" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <Button Theme="{StaticResource SecondaryButton}"
+                Content="Excel"
+                Padding="10,5"
+                FontSize="11"
+                Click="OnExportCsv"
+                ToolTip.Tip="Выгрузить отчёт в CSV для Excel" />
+        <Button Theme="{StaticResource SecondaryButton}"
+                Content="PDF"
+                Padding="10,5"
+                FontSize="11"
+                Click="OnExportPdf"
+                ToolTip.Tip="Открыть отчёт для печати и сохранения в PDF" />
+      </StackPanel>
+    </Grid>
+
+    <!-- ================= период ================= -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="10">
+      <StackPanel>
+        <TextBlock Classes="field-label" Text="С начала" />
+        <DatePicker SelectedDate="{Binding FromDate}"
+                    DayFormat="dd"
+                    MonthFormat="MM"
+                    YearFormat="yyyy"
+                    Width="165" />
+      </StackPanel>
+      <StackPanel Grid.Column="1">
+        <TextBlock Classes="field-label" Text="По" />
+        <DatePicker SelectedDate="{Binding ToDate}"
+                    DayFormat="dd"
+                    MonthFormat="MM"
+                    YearFormat="yyyy"
+                    Width="165" />
+      </StackPanel>
+      <TextBlock Grid.Column="4"
+                 Classes="error"
+                 Text="{Binding PageError}"
+                 VerticalAlignment="Bottom"
+                 Margin="0,0,0,10"
+                 IsVisible="{Binding PageError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+    </Grid>
+
+    <!-- ================= цифры ================= -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*,*" ColumnSpacing="12">
+      <Border Classes="card" Padding="14,12">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="column" Text="ВЫРУЧКА" />
+          <TextBlock Classes="stat-value" FontSize="22" Text="{Binding RevenueText}" />
+          <TextBlock Classes="muted" Text="по дате выдачи" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" Padding="14,12">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="column" Text="ПРИБЫЛЬ" />
+          <TextBlock Classes="stat-value" FontSize="22" Text="{Binding ProfitText}" Foreground="{Binding ProfitBrush}" />
+          <TextBlock Classes="muted" Text="{Binding ProfitHint}" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="2" Classes="card" Padding="14,12">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="column" Text="ЗАКАЗОВ" />
+          <TextBlock Classes="stat-value" FontSize="22" Text="{Binding OrdersText}" />
+          <TextBlock Classes="muted" Text="{Binding OrdersHint}" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="3" Classes="card" Padding="14,12">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="column" Text="СРЕДНИЙ ЧЕК" />
+          <TextBlock Classes="stat-value" FontSize="22" Text="{Binding AverageCheckText}" />
+          <TextBlock Classes="muted" Text="на один заказ" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="4" Classes="card" Padding="14,12">
+        <StackPanel Spacing="5">
+          <TextBlock Classes="column" Text="ЗАКУПКИ" />
+          <TextBlock Classes="stat-value" FontSize="22" Text="{Binding PurchasesText}" />
+          <TextBlock Classes="muted" Text="{Binding PurchasesHint}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ================= заметки ================= -->
+    <StackPanel Grid.Row="3" Spacing="8">
+      <Border Background="{DynamicResource SurfaceAltBrush}"
+              BorderBrush="{DynamicResource LineBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Padding="12,9"
+              IsVisible="{Binding HasInProgress}">
+        <TextBlock Classes="secondary" Text="{Binding InProgressText}" TextWrapping="Wrap" />
+      </Border>
+
+      <Border Background="{DynamicResource SurfaceAltBrush}"
+              BorderBrush="{DynamicResource LineBrush}"
+              BorderThickness="1"
+              CornerRadius="10"
+              Padding="12,9"
+              IsVisible="{Binding HasEstimatedCost}">
+        <TextBlock Classes="muted"
+                   TextWrapping="Wrap"
+                   Text="Себестоимость части заказов восстановлена приблизительно: они оформлены до появления снимка цен." />
+      </Border>
+    </StackPanel>
+
+    <!-- ================= обзор ================= -->
+    <Grid Grid.Row="4" ColumnDefinitions="1.55*,1*" ColumnSpacing="16" IsVisible="{Binding !ShowCustomers}">
+
+      <Border Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <StackPanel Margin="18,14,18,12" Spacing="3">
+            <TextBlock Text="Топ рецептов"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="По количеству за период, не больше десяти позиций" />
+          </StackPanel>
+
+          <Border Grid.Row="1"
+                  Background="{DynamicResource TableHeaderBrush}"
+                  BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="0,1,0,1"
+                  Padding="18,8">
+            <Grid ColumnDefinitions="*,90,110,110">
+              <TextBlock Classes="column" Text="ПОЗИЦИЯ" />
+              <TextBlock Grid.Column="1" Classes="column" Text="КОЛИЧЕСТВО" HorizontalAlignment="Right" />
+              <TextBlock Grid.Column="2" Classes="column" Text="ВЫРУЧКА" HorizontalAlignment="Right" />
+              <TextBlock Grid.Column="3" Classes="column" Text="ПРИБЫЛЬ" HorizontalAlignment="Right" />
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="2">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding TopItems}" Margin="6,8,6,12">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ReportTopRowViewModel">
+                    <Border Classes="row" CornerRadius="9" Padding="12,7" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="*,90,110,110">
+                        <StackPanel VerticalAlignment="Center" Spacing="4">
+                          <TextBlock Text="{Binding Name}"
+                                     FontSize="12.5"
+                                     TextTrimming="CharacterEllipsis" />
+                          <ProgressBar Classes="chart" Value="{Binding BarValue}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding QuantityText}"
+                                   Classes="secondary"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding RevenueText}"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding ProfitText}"
+                                   Foreground="{Binding ProfitBrush}"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Text="За этот период нет выданных заказов."
+                       Classes="muted"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsTopEmpty}" />
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <StackPanel Margin="18,14,18,12" Spacing="3">
+            <TextBlock Text="По дням"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="Только дни, когда были выдачи" />
+          </StackPanel>
+
+          <Border Grid.Row="1"
+                  Background="{DynamicResource TableHeaderBrush}"
+                  BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="0,1,0,1"
+                  Padding="18,8">
+            <Grid ColumnDefinitions="*,70,110">
+              <TextBlock Classes="column" Text="ДЕНЬ" />
+              <TextBlock Grid.Column="1" Classes="column" Text="ЗАКАЗОВ" HorizontalAlignment="Right" />
+              <TextBlock Grid.Column="2" Classes="column" Text="ВЫРУЧКА" HorizontalAlignment="Right" />
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="2">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Days}" Margin="6,8,6,12">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ReportDayRowViewModel">
+                    <Border Classes="row" CornerRadius="9" Padding="12,7" Margin="0,0,0,6">
+                      <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,70,110">
+                        <TextBlock Text="{Binding DateText}"
+                                   FontSize="12.5"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding OrdersText}"
+                                   Classes="secondary"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding RevenueText}"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <ProgressBar Grid.Row="1"
+                                     Grid.ColumnSpan="3"
+                                     Classes="chart"
+                                     Margin="0,5,0,0"
+                                     Value="{Binding BarValue}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Text="Нет дней с выдачами."
+                       Classes="muted"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsDaysEmpty}" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ================= клиенты ================= -->
+    <Grid Grid.Row="4" ColumnDefinitions="1.9*,1*" ColumnSpacing="16" IsVisible="{Binding ShowCustomers}">
+
+      <Border Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <StackPanel Margin="18,14,18,12" Spacing="3">
+            <TextBlock Text="Клиенты"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="{Binding CustomersSummary}" />
+          </StackPanel>
+
+          <Border Grid.Row="1"
+                  Background="{DynamicResource TableHeaderBrush}"
+                  BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="0,1,0,1"
+                  Padding="18,8">
+            <Grid ColumnDefinitions="34,*,96,56,90,84,84">
+              <TextBlock Classes="column" Text="№" />
+              <TextBlock Grid.Column="1" Classes="column" Text="КЛИЕНТ" />
+              <TextBlock Grid.Column="2" Classes="column" Text="ТЕЛЕФОН" />
+              <TextBlock Grid.Column="3" Classes="column" Text="ЗАКАЗОВ" HorizontalAlignment="Right" />
+              <TextBlock Grid.Column="4" Classes="column" Text="ВЫРУЧКА" HorizontalAlignment="Right" />
+              <TextBlock Grid.Column="5" Classes="column" Text="СРЕДНИЙ" HorizontalAlignment="Right" />
+              <TextBlock Grid.Column="6" Classes="column" Text="ПОСЛЕДНИЙ" HorizontalAlignment="Right" />
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="2">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Customers}" Margin="6,8,6,12">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ReportCustomerRowViewModel">
+                    <Border Classes="row" CornerRadius="9" Padding="12,7" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="34,*,96,56,90,84,84">
+                        <TextBlock Text="{Binding NumberText}"
+                                   Classes="muted"
+                                   FontSize="11"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Phone}"
+                                   Classes="secondary"
+                                   FontSize="11.5"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding OrdersText}"
+                                   FontSize="12.5"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4"
+                                   Text="{Binding RevenueText}"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5"
+                                   Text="{Binding AverageCheckText}"
+                                   FontSize="12"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="6"
+                                   Text="{Binding LastOrderText}"
+                                   Classes="muted"
+                                   FontSize="11.5"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Text="За этот период не было выданных заказов."
+                       Classes="muted"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsCustomersEmpty}" />
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <StackPanel Margin="18,14,18,12" Spacing="3">
+            <TextBlock Text="Кто заказывает чаще"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="По числу выданных заказов за период" />
+          </StackPanel>
+
+          <Border Grid.Row="1"
+                  Background="{DynamicResource TableHeaderBrush}"
+                  BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="0,1,0,1"
+                  Padding="18,8">
+            <Grid ColumnDefinitions="*,60">
+              <TextBlock Classes="column" Text="КЛИЕНТ" />
+              <TextBlock Grid.Column="1" Classes="column" Text="ЗАКАЗОВ" HorizontalAlignment="Right" />
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="2">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding CustomerChart}" Margin="6,8,6,12">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CustomerChartRowViewModel">
+                    <Border Classes="row" CornerRadius="9" Padding="12,8" Margin="0,0,0,6">
+                      <StackPanel Spacing="5">
+                        <Grid ColumnDefinitions="*,60">
+                          <TextBlock Text="{Binding Name}"
+                                     FontSize="12.5"
+                                     FontWeight="SemiBold"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1"
+                                     Text="{Binding OrdersText}"
+                                     FontSize="12.5"
+                                     FontWeight="Bold"
+                                     HorizontalAlignment="Right" />
+                        </Grid>
+                        <ProgressBar Classes="chart" Value="{Binding BarValue}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Text="Нет данных о клиентах."
+                       Classes="muted"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsCustomersEmpty}" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

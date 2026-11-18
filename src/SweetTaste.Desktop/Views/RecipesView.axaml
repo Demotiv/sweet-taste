@@ -1,0 +1,776 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SweetTaste.Desktop.ViewModels"
+             xmlns:domain="using:SweetTaste.Core.Domain"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="SweetTaste.Desktop.Views.RecipesView"
+             x:DataType="vm:RecipesViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="18" Margin="30,26,30,26">
+
+    <!-- ================= шапка ================= -->
+    <Grid Grid.Row="0" RowDefinitions="Auto,Auto" RowSpacing="14">
+      <StackPanel Grid.Row="0" Spacing="6">
+        <TextBlock Classes="display" Text="Рецепты" />
+        <TextBlock Classes="secondary" Text="{Binding Subtitle}" />
+      </StackPanel>
+
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+        <Grid Width="290" HorizontalAlignment="Left">
+          <TextBox Text="{Binding SearchText}"
+                   Watermark="Найти рецепт"
+                   Padding="34,0,10,0" />
+          <Path Data="{StaticResource IconSearch}"
+                Stroke="{DynamicResource MutedBrush}"
+                StrokeThickness="1.6"
+                StrokeLineCap="Round"
+                Width="15"
+                Height="15"
+                Stretch="Uniform"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                Margin="12,0,0,0"
+                IsHitTestVisible="False" />
+        </Grid>
+
+        <Button Grid.Column="2"
+                Theme="{StaticResource PrimaryButton}"
+                Command="{Binding NewRecipeCommand}"
+                IsEnabled="{Binding CanCreateRecipe}"
+                ToolTip.Tip="{Binding CreateTooltip}"
+                VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="{StaticResource IconPlus}"
+                  Stroke="{Binding $parent[Button].Foreground}"
+                  StrokeThickness="2"
+                  StrokeLineCap="Round"
+                  Width="13"
+                  Height="13"
+                  Stretch="Uniform"
+                  VerticalAlignment="Center" />
+            <TextBlock Text="Новый рецепт" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Grid>
+
+    <!-- ================= ошибка страницы ================= -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource DangerSoftBrush}"
+            BorderBrush="{DynamicResource DangerBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="14,10"
+            IsVisible="{Binding PageError, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <TextBlock Classes="error" Text="{Binding PageError}" />
+    </Border>
+
+    <!-- ================= список ================= -->
+    <Border Grid.Row="2" Classes="card" ClipToBounds="True">
+      <Grid RowDefinitions="Auto,Auto,*">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="20,16,20,14">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Книга рецептов"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="Себестоимость считается по средним ценам ингредиентов и обновляется сама" />
+          </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource TableHeaderBrush}"
+                BorderBrush="{DynamicResource LineBrush}"
+                BorderThickness="0,1,0,1"
+                Padding="20,10">
+          <Grid ColumnDefinitions="2.2*,120,130,140,130,88">
+            <TextBlock Classes="column" Text="РЕЦЕПТ" />
+            <TextBlock Grid.Column="1" Classes="column" Text="ВЫХОД" />
+            <TextBlock Grid.Column="2" Classes="column" Text="СОСТАВ" />
+            <TextBlock Grid.Column="3" Classes="column" Text="СЕБЕСТОИМОСТЬ" />
+            <TextBlock Grid.Column="4" Classes="column" Text="ЦЕНА" />
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Groups}" Margin="4,8,4,14">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RecipeGroupViewModel">
+                  <StackPanel Margin="0,0,0,6">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4">
+                      <Button Theme="{StaticResource GroupHeaderButton}" Command="{Binding ToggleCommand}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <TextBlock Text="{Binding Chevron}"
+                                     FontSize="14"
+                                     Foreground="{DynamicResource MutedBrush}"
+                                     VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1"
+                                     Text="{Binding Name}"
+                                     FontSize="13.5"
+                                     FontWeight="Bold"
+                                     Margin="8,0,0,0"
+                                     VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2"
+                                     Text="{Binding CountText}"
+                                     Classes="muted"
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                      </Button>
+
+                      <Button Grid.Column="1"
+                              Theme="{StaticResource IconButton}"
+                              Command="{Binding RenameCategoryCommand}"
+                              IsVisible="{Binding CanDeleteCategory}"
+                              ToolTip.Tip="Переименовать категорию"
+                              VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconPencil}"
+                              Stroke="{Binding $parent[Button].Foreground}"
+                              StrokeThickness="1.6"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"
+                              Width="15"
+                              Height="15"
+                              Stretch="Uniform" />
+                      </Button>
+
+                      <Button Grid.Column="2"
+                              Theme="{StaticResource DangerIconButton}"
+                              Command="{Binding DeleteCategoryCommand}"
+                              IsVisible="{Binding CanDeleteCategory}"
+                              ToolTip.Tip="Удалить категорию"
+                              VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconTrash}"
+                              Stroke="{Binding $parent[Button].Foreground}"
+                              StrokeThickness="1.6"
+                              StrokeLineCap="Round"
+                              StrokeJoin="Round"
+                              Width="15"
+                              Height="15"
+                              Stretch="Uniform" />
+                      </Button>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding Items}"
+                                  IsVisible="{Binding IsExpanded}"
+                                  Margin="0,4,0,0">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RecipeRowViewModel">
+                          <Border Classes="row"
+                                  Padding="16,10"
+                                  Margin="0,0,0,8"
+                                  Cursor="Hand"
+                                  ToolTip.Tip="Открыть рецепт"
+                                  PointerPressed="OnRecipeRowPointerPressed">
+                            <Grid ColumnDefinitions="2.2*,120,130,140,130,88">
+
+                              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                                <Border Width="38"
+                                        Height="38"
+                                        CornerRadius="9"
+                                        ClipToBounds="True"
+                                        Background="{DynamicResource BadgeBrush}"
+                                        IsVisible="{Binding HasPhoto}">
+                                  <Image Source="{Binding Photo}" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                                  <TextBlock Text="{Binding Name}"
+                                             FontSize="13.5"
+                                             FontWeight="Bold"
+                                             TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Text="{Binding CategoryText}" Classes="muted" />
+                                </StackPanel>
+                              </Grid>
+
+                              <TextBlock Grid.Column="1"
+                                         Text="{Binding OutputText}"
+                                         Classes="secondary"
+                                         VerticalAlignment="Center" />
+
+                              <TextBlock Grid.Column="2"
+                                         Text="{Binding IngredientsText}"
+                                         Classes="secondary"
+                                         VerticalAlignment="Center" />
+
+                              <TextBlock Grid.Column="3"
+                                         Text="{Binding CostText}"
+                                         VerticalAlignment="Center" />
+
+                              <StackPanel Grid.Column="4"
+                                          Orientation="Horizontal"
+                                          Spacing="4"
+                                          VerticalAlignment="Center">
+                                <TextBlock Text="{Binding PriceText}"
+                                           FontSize="13.5"
+                                           FontWeight="Bold" />
+                                <TextBlock Text="{Binding PriceUnitText}"
+                                           Classes="muted"
+                                           FontSize="11"
+                                           VerticalAlignment="Center" />
+                              </StackPanel>
+
+                              <StackPanel Grid.Column="5"
+                                          Orientation="Horizontal"
+                                          Spacing="2"
+                                          HorizontalAlignment="Right"
+                                          VerticalAlignment="Center">
+                                <Button Theme="{StaticResource IconButton}"
+                                        Command="{Binding EditCommand}"
+                                        ToolTip.Tip="Изменить рецепт">
+                                  <Path Data="{StaticResource IconPencil}"
+                                        Stroke="{Binding $parent[Button].Foreground}"
+                                        StrokeThickness="1.6"
+                                        StrokeLineCap="Round"
+                                        StrokeJoin="Round"
+                                        Width="15"
+                                        Height="15"
+                                        Stretch="Uniform" />
+                                </Button>
+                                <Button Theme="{StaticResource DangerIconButton}"
+                                        Command="{Binding DeleteCommand}"
+                                        ToolTip.Tip="Переместить в корзину">
+                                  <Path Data="{StaticResource IconTrash}"
+                                        Stroke="{Binding $parent[Button].Foreground}"
+                                        StrokeThickness="1.6"
+                                        StrokeLineCap="Round"
+                                        StrokeJoin="Round"
+                                        Width="15"
+                                        Height="15"
+                                        Stretch="Uniform" />
+                                </Button>
+                              </StackPanel>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="В категории пока нет рецептов"
+                               Classes="muted"
+                               Margin="16,4,0,8"
+                               IsVisible="{Binding ShowEmptyHint}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <TextBlock Text="{Binding EmptyText}"
+                     Classes="muted"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     TextAlignment="Center"
+                     MaxWidth="420"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding IsEmpty}" />
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- ================= просмотр рецепта ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsPreviewOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border Classes="dialog"
+              Width="860"
+              MaxHeight="800"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="16">
+
+          <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+            <Border Width="104"
+                    Height="104"
+                    CornerRadius="12"
+                    ClipToBounds="True"
+                    Background="{DynamicResource SurfaceAltBrush}"
+                    BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1"
+                    Margin="0,0,14,0"
+                    IsVisible="{Binding ViewPhotoVisible}">
+              <Image Source="{Binding ViewPhoto}" Stretch="UniformToFill" />
+            </Border>
+            <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+              <TextBlock Classes="dialog-title"
+                         Text="{Binding ViewTitle}"
+                         TextWrapping="Wrap" />
+              <Border Background="{DynamicResource BadgeBrush}"
+                      CornerRadius="6"
+                      Padding="7,2"
+                      HorizontalAlignment="Left"
+                      IsVisible="{Binding ViewHasCategory}">
+                <TextBlock Text="{Binding ViewCategory}"
+                           FontSize="10"
+                           Foreground="{DynamicResource InkSecondaryBrush}" />
+              </Border>
+            </StackPanel>
+            <Button Grid.Column="2"
+                    Theme="{StaticResource IconButton}"
+                    Command="{Binding ClosePreviewCommand}"
+                    VerticalAlignment="Top"
+                    ToolTip.Tip="Закрыть (Esc)">
+              <Path Data="{StaticResource IconClose}"
+                    Stroke="{Binding $parent[Button].Foreground}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    Width="14"
+                    Height="14"
+                    Stretch="Uniform" />
+            </Button>
+          </Grid>
+
+          <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="14" Margin="0,0,10,0">
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="12"
+                      Padding="16,14">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                      RowSpacing="14" ColumnSpacing="16">
+                  <StackPanel Spacing="4">
+                    <TextBlock Classes="column" Text="ВЫХОД" />
+                    <TextBlock Text="{Binding ViewOutput}" FontSize="14" FontWeight="Bold" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock Classes="column" Text="НАЦЕНКА" />
+                    <TextBlock Text="{Binding ViewMarkup}" FontSize="14" FontWeight="Bold" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="1" Spacing="4">
+                    <TextBlock Classes="column" Text="СЕБЕСТОИМОСТЬ ПАРТИИ" />
+                    <TextBlock Text="{Binding ViewBatchCost}" FontSize="14" FontWeight="Bold" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="1" Grid.Column="1" Spacing="4">
+                    <TextBlock Classes="column" Text="ЦЕНА" />
+                    <TextBlock Text="{Binding ViewPrice}"
+                               FontSize="14"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource AccentDarkBrush}" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="12"
+                      Padding="16,14">
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Состав"
+                               FontFamily="{StaticResource DisplayFont}"
+                               FontSize="15"
+                               FontWeight="Bold" />
+                    <TextBlock Grid.Column="1"
+                               Classes="muted"
+                               Text="{Binding ViewIngredientCount}"
+                               VerticalAlignment="Center" />
+                  </Grid>
+
+                  <ItemsControl ItemsSource="{Binding ViewLines}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:RecipePreviewLineViewModel">
+                        <Grid ColumnDefinitions="*,Auto,Auto"
+                              ColumnSpacing="14"
+                              Margin="0,0,0,7">
+                          <TextBlock Text="{Binding Name}"
+                                     TextTrimming="CharacterEllipsis"
+                                     VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1"
+                                     Text="{Binding AmountText}"
+                                     Classes="secondary"
+                                     VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2"
+                                     Text="{Binding CostText}"
+                                     FontWeight="SemiBold"
+                                     MinWidth="100"
+                                     TextAlignment="Right"
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <TextBlock Text="Состав пока не заполнен."
+                             Classes="muted"
+                             IsVisible="{Binding !ViewHasLines}" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="12"
+                      Padding="16,14">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Технология приготовления"
+                               FontFamily="{StaticResource DisplayFont}"
+                               FontSize="15"
+                               FontWeight="Bold" />
+                    <TextBlock Grid.Column="1"
+                               Classes="muted"
+                               Text="{Binding ViewStepCount}"
+                               VerticalAlignment="Center" />
+                  </Grid>
+
+                  <ItemsControl ItemsSource="{Binding ViewSteps}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:RecipePreviewStepViewModel">
+                        <Grid ColumnDefinitions="Auto,*"
+                              ColumnSpacing="10"
+                              Margin="0,0,0,10">
+                          <Border Width="24"
+                                  Height="24"
+                                  CornerRadius="12"
+                                  Background="{DynamicResource AccentSoftBrush}"
+                                  VerticalAlignment="Top">
+                            <TextBlock Text="{Binding Number}"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource AccentDarkBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                          </Border>
+                          <TextBlock Grid.Column="1"
+                                     Text="{Binding Text}"
+                                     TextWrapping="Wrap"
+                                     LineHeight="19"
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <TextBlock Text="Технология пока не заполнена. Откройте рецепт на изменение и добавьте шаги приготовления."
+                             Classes="muted"
+                             TextWrapping="Wrap"
+                             IsVisible="{Binding !ViewHasTechnology}" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+            <TextBlock Classes="muted"
+                       Text="Нажмите «Изменить рецепт», чтобы поправить состав или технологию."
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"
+                       Margin="0,0,14,0" />
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="10"
+                        HorizontalAlignment="Right">
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Изменить рецепт"
+                      Command="{Binding EditPreviewCommand}" />
+              <Button Theme="{StaticResource PrimaryButton}"
+                      Content="Закрыть"
+                      Command="{Binding ClosePreviewCommand}" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ================= форма рецепта ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsFormOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+
+      <Border Classes="dialog"
+              Width="840"
+              MaxHeight="780"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="14" Margin="0,0,14,8">
+
+            <TextBlock Classes="dialog-title" Text="{Binding FormTitle}" />
+
+            <StackPanel>
+              <TextBlock Classes="field-label" Text="Название" />
+              <TextBox Text="{Binding FormName}" Watermark="Например, Клубничный чизкейк" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Категория" />
+                <ComboBox ItemsSource="{Binding CategoryOptions}"
+                          SelectedItem="{Binding FormCategorySelection}"
+                          HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Новая категория (необязательно)" />
+                <TextBox Text="{Binding FormNewCategory}" Watermark="Например, Торты" />
+              </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+              <Border Width="110"
+                      Height="110"
+                      CornerRadius="12"
+                      ClipToBounds="True"
+                      Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1">
+                <Grid>
+                  <TextBlock Text="ФОТО"
+                             Classes="muted"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding !FormHasPhoto}" />
+                  <Image Source="{Binding FormPhoto}"
+                         Stretch="UniformToFill"
+                         IsVisible="{Binding FormHasPhoto}" />
+                </Grid>
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Theme="{StaticResource SecondaryButton}"
+                          Content="Загрузить фото"
+                          Click="OnPickRecipePhoto" />
+                  <Button Theme="{StaticResource SecondaryButton}"
+                          Content="Удалить"
+                          Foreground="{DynamicResource DangerBrush}"
+                          BorderBrush="{DynamicResource DangerBorderBrush}"
+                          Command="{Binding RemovePhotoCommand}"
+                          IsVisible="{Binding FormHasPhoto}" />
+                </StackPanel>
+                <TextBlock Classes="muted"
+                           TextWrapping="Wrap"
+                           Text="Фото появится в книге рецептов. Оно сжимается и хранится в базе." />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel>
+              <TextBlock Classes="field-label" Text="Технология приготовления (необязательно)" />
+              <TextBox Text="{Binding FormTechnology}"
+                       Watermark="Как готовить: по шагам, температуры, время"
+                       AcceptsReturn="True"
+                       TextWrapping="Wrap"
+                       Height="90" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Выход партии" />
+                <NumericUpDown Value="{Binding FormOutputQuantity}"
+                               Minimum="{Binding OutputMinimum}"
+                               Maximum="100000"
+                               Increment="{Binding OutputIncrement}"
+                               FormatString="{Binding OutputFormat}"
+                               HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Единица выхода" />
+                <ComboBox ItemsSource="{Binding OutputUnits}"
+                          SelectedItem="{Binding FormOutputUnit}"
+                          HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Classes="field-label" Text="Наценка, %" />
+                <NumericUpDown Value="{Binding FormMarkup}"
+                               Minimum="0"
+                               Maximum="1000"
+                               Increment="10"
+                               FormatString="0"
+                               HorizontalAlignment="Stretch" />
+              </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="field-label" Text="Состав" VerticalAlignment="Center" />
+              <Button Grid.Column="1"
+                      Theme="{StaticResource SecondaryButton}"
+                      Padding="12,5"
+                      FontSize="12"
+                      Content="+ Ингредиент"
+                      Command="{Binding AddLineCommand}" />
+            </Grid>
+
+            <Border Background="{DynamicResource SurfaceAltBrush}"
+                    BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="12,8">
+              <ScrollViewer MaxHeight="230">
+                <ItemsControl ItemsSource="{Binding Lines}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RecipeLineViewModel">
+                      <Grid ColumnDefinitions="*,130,36,34" ColumnSpacing="8" Margin="0,0,0,6">
+                        <ComboBox ItemsSource="{Binding Options}"
+                                  SelectedItem="{Binding Ingredient}"
+                                  MaxDropDownHeight="300"
+                                  ContainerPrepared="IngredientCombo_ContainerPrepared"
+                                  HorizontalAlignment="Stretch">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:IngredientPickItem">
+                              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBlock Text="{Binding Name}" IsVisible="{Binding !IsHeader}" />
+                                <TextBlock Text="{Binding Name}"
+                                           IsVisible="{Binding IsHeader}"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource InkSecondaryBrush}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Unit}"
+                                           IsVisible="{Binding !IsHeader}"
+                                           Classes="muted"
+                                           FontSize="11" />
+                              </Grid>
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <NumericUpDown Grid.Column="1"
+                                       Value="{Binding Amount}"
+                                       Minimum="0"
+                                       Maximum="1000000"
+                                       Increment="10"
+                                       FormatString="0.###" />
+
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding UnitText}"
+                                   Classes="muted"
+                                   VerticalAlignment="Center" />
+
+                        <Button Grid.Column="3"
+                                Theme="{StaticResource IconButton}"
+                                Command="{Binding RemoveCommand}"
+                                ToolTip.Tip="Убрать строку">
+                          <Path Data="{StaticResource IconClose}"
+                                Stroke="{Binding $parent[Button].Foreground}"
+                                StrokeThickness="1.7"
+                                StrokeLineCap="Round"
+                                Width="12"
+                                Height="12"
+                                Stretch="Uniform" />
+                        </Button>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+
+            <Border Background="{DynamicResource SurfaceAltBrush}"
+                    BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="14,12">
+              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                <StackPanel Spacing="4">
+                  <TextBlock Classes="column" Text="СЕБЕСТОИМОСТЬ ПАРТИИ" />
+                  <TextBlock Text="{Binding PreviewBatch}" FontSize="16" FontWeight="Bold" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                  <TextBlock Classes="column" Text="СЕБЕСТОИМОСТЬ ЕДИНИЦЫ" />
+                  <TextBlock Text="{Binding PreviewUnit}" FontSize="16" FontWeight="Bold" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                  <TextBlock Classes="column" Text="ЦЕНА С НАЦЕНКОЙ" />
+                  <TextBlock Text="{Binding PreviewPrice}"
+                             FontSize="16"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource AccentDarkBrush}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+
+            <Border Background="{DynamicResource SurfaceAltBrush}"
+                    BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="14,12">
+              <StackPanel Spacing="8">
+                <TextBlock Classes="column" Text="ПЕРЕСЧЁТ ПОД ДРУГОЕ КОЛИЧЕСТВО" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <TextBlock Text="{Binding ScaleTitle}"
+                             FontSize="13"
+                             FontWeight="SemiBold"
+                             VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <NumericUpDown Value="{Binding ScaleQuantity}"
+                                   Minimum="0.001"
+                                   Maximum="100000"
+                                   Increment="0.1"
+                                   FormatString="0.###"
+                                   Width="130" />
+                    <TextBlock Text="{Binding FormOutputUnit}"
+                               Classes="muted"
+                               VerticalAlignment="Center" />
+                  </StackPanel>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding ScaledLines}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ScaledIngredientRowViewModel">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,3">
+                        <TextBlock Text="{Binding Name}" FontSize="12.5" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding AmountText}"
+                                   Classes="muted"
+                                   FontSize="12.5" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="muted"
+                           Text="Это подсказка для заказа: сам рецепт остаётся на свою партию." />
+              </StackPanel>
+            </Border>
+
+            <TextBlock Classes="error"
+                       Text="{Binding FormError}"
+                       IsVisible="{Binding FormError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+              <Button Theme="{StaticResource SecondaryButton}" Content="Отмена" Command="{Binding CloseFormCommand}" />
+              <Button Theme="{StaticResource PrimaryButton}" Content="Сохранить" Command="{Binding SaveRecipeCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- ================= переименование категории ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsCategoryRenameOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border Classes="dialog" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="dialog-title" Text="Переименовать категорию" />
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="Новое название" />
+            <TextBox Text="{Binding CategoryRenameValue}" Watermark="Например, Торты" />
+          </StackPanel>
+          <TextBlock Classes="error"
+                     Text="{Binding CategoryRenameError}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding CategoryRenameError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Отмена"
+                    Command="{Binding CloseCategoryRenameCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Content="Сохранить"
+                    Command="{Binding SaveCategoryRenameCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- ================= подтверждение удаления ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsConfirmOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border Classes="dialog" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="Подтвердите действие" />
+          <TextBlock Classes="secondary" Text="{Binding ConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}" Content="Отмена" Command="{Binding CancelConfirmCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}" Content="{Binding ConfirmButtonText}" Command="{Binding ConfirmDeleteCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

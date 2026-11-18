@@ -1,0 +1,1037 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SweetTaste.Desktop.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="SweetTaste.Desktop.Views.OrdersView"
+             x:DataType="vm:OrdersViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="18" Margin="30,26,30,26">
+
+    <!-- ================= шапка ================= -->
+    <Grid Grid.Row="0" RowDefinitions="Auto,Auto" RowSpacing="14">
+      <StackPanel Grid.Row="0" Spacing="6">
+        <TextBlock Classes="display" Text="Заказы" />
+        <TextBlock Classes="secondary" Text="{Binding Subtitle}" />
+      </StackPanel>
+
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="10">
+        <Grid Width="270" HorizontalAlignment="Left">
+          <TextBox Text="{Binding SearchText}"
+                   Watermark="Клиент, телефон или № заказа"
+                   Padding="34,0,10,0" />
+          <Path Data="{StaticResource IconSearch}"
+                Stroke="{DynamicResource MutedBrush}"
+                StrokeThickness="1.6"
+                StrokeLineCap="Round"
+                Width="15"
+                Height="15"
+                Stretch="Uniform"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                Margin="12,0,0,0"
+                IsHitTestVisible="False" />
+        </Grid>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Theme="{StaticResource PillButton}"
+                  Classes="tab"
+                  Classes.active="{Binding CurrentTabActive}"
+                  Content="Текущие"
+                  Command="{Binding ShowCurrentCommand}" />
+          <Button Theme="{StaticResource PillButton}"
+                  Classes="tab"
+                  Classes.active="{Binding ArchiveTabActive}"
+                  Content="Архив"
+                  Command="{Binding ShowArchiveTabCommand}" />
+          <Button Theme="{StaticResource PillButton}"
+                  Classes="tab"
+                  Classes.active="{Binding CustomersTabActive}"
+                  Content="Клиенты"
+                  Command="{Binding ShowCustomersTabCommand}" />
+        </StackPanel>
+
+        <Button Grid.Column="3"
+                Theme="{StaticResource PrimaryButton}"
+                Command="{Binding NewOrderCommand}"
+                IsEnabled="{Binding CanCreateOrder}"
+                ToolTip.Tip="{Binding CreateTooltip}"
+                VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Path Data="{StaticResource IconPlus}"
+                  Stroke="{Binding $parent[Button].Foreground}"
+                  StrokeThickness="2"
+                  StrokeLineCap="Round"
+                  Width="13"
+                  Height="13"
+                  Stretch="Uniform"
+                  VerticalAlignment="Center" />
+            <TextBlock Text="Новый заказ" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Grid>
+
+    <!-- ================= ошибка страницы ================= -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource DangerSoftBrush}"
+            BorderBrush="{DynamicResource DangerBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="14,10"
+            IsVisible="{Binding PageError, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+      <TextBlock Classes="error" Text="{Binding PageError}" />
+    </Border>
+
+    <!-- ================= список ================= -->
+    <Border Grid.Row="2" Classes="card" ClipToBounds="True" IsVisible="{Binding !ShowCustomers}">
+      <Grid RowDefinitions="Auto,Auto,*">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="20,16,20,14">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Список заказов"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="17"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted" Text="Текущие заказы и архив; детали и список покупок — по кнопке «Детали»" />
+          </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource TableHeaderBrush}"
+                BorderBrush="{DynamicResource LineBrush}"
+                BorderThickness="0,1,0,1"
+                Padding="20,10">
+          <Grid ColumnDefinitions="90,1.6*,1.9*,110,115,105,230">
+            <TextBlock Classes="column" Text="ЗАКАЗ" />
+            <TextBlock Grid.Column="1" Classes="column" Text="КЛИЕНТ" />
+            <TextBlock Grid.Column="2" Classes="column" Text="СОСТАВ" />
+            <TextBlock Grid.Column="3" Classes="column" Text="ВЫДАЧА" />
+            <TextBlock Grid.Column="4" Classes="column" Text="СТАТУС" />
+            <TextBlock Grid.Column="5" Classes="column" Text="СУММА" />
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Items}" Margin="4,8,4,14">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:OrderRowViewModel">
+                  <Border Classes="row" Padding="16,10" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="90,1.6*,1.9*,110,115,105,230">
+
+                      <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding NumberText}" FontSize="13.5" FontWeight="Bold" />
+                        <TextBlock Text="{Binding CreatedText}" Classes="muted" FontSize="10.5" />
+                      </StackPanel>
+
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding ClientName}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Phone}" Classes="muted" FontSize="11" />
+                      </StackPanel>
+
+                      <TextBlock Grid.Column="2"
+                                 Text="{Binding ItemsText}"
+                                 VerticalAlignment="Center"
+                                 TextWrapping="Wrap"
+                                 TextTrimming="CharacterEllipsis"
+                                 MaxLines="2"
+                                 FontSize="12" />
+
+                      <TextBlock Grid.Column="3"
+                                 Text="{Binding DueText}"
+                                 VerticalAlignment="Center"
+                                 FontSize="12.5" />
+
+                      <TextBlock Grid.Column="4"
+                                 Text="{Binding StatusText}"
+                                 Foreground="{Binding StatusBrush}"
+                                 FontSize="12.5"
+                                 FontWeight="Bold"
+                                 VerticalAlignment="Center" />
+
+                      <StackPanel Grid.Column="5" VerticalAlignment="Center" Spacing="1">
+                        <TextBlock Text="{Binding TotalText}"
+                                   FontSize="13.5"
+                                   FontWeight="Bold" />
+                        <TextBlock Text="{Binding PaymentText}"
+                                   Foreground="{Binding PaymentBrush}"
+                                   FontSize="10.5"
+                                   IsVisible="{Binding ShowPayment}" />
+                      </StackPanel>
+
+                      <StackPanel Grid.Column="6"
+                                  Orientation="Horizontal"
+                                  Spacing="2"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center">
+                        <Button Theme="{StaticResource SecondaryButton}"
+                                Content="Детали"
+                                Padding="10,4"
+                                FontSize="11"
+                                Command="{Binding DetailsCommand}" />
+
+                        <Button Theme="{StaticResource PillButton}"
+                                Content="{Binding AdvanceText}"
+                                Command="{Binding AdvanceCommand}"
+                                Cursor="Hand"
+                                IsVisible="{Binding CanAdvance}" />
+
+                        <Button Theme="{StaticResource IconButton}"
+                                Command="{Binding EditCommand}"
+                                IsVisible="{Binding CanEdit}"
+                                ToolTip.Tip="Изменить заказ">
+                          <Path Data="{StaticResource IconPencil}"
+                                Stroke="{Binding $parent[Button].Foreground}"
+                                StrokeThickness="1.6"
+                                StrokeLineCap="Round"
+                                StrokeJoin="Round"
+                                Width="14"
+                                Height="14"
+                                Stretch="Uniform" />
+                        </Button>
+
+                        <Button Theme="{StaticResource DangerIconButton}"
+                                Command="{Binding CancelCommand}"
+                                IsVisible="{Binding CanAdvance}"
+                                ToolTip.Tip="Отменить заказ">
+                          <Path Data="{StaticResource IconClose}"
+                                Stroke="{Binding $parent[Button].Foreground}"
+                                StrokeThickness="1.7"
+                                StrokeLineCap="Round"
+                                Width="12"
+                                Height="12"
+                                Stretch="Uniform" />
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <TextBlock Text="{Binding EmptyText}"
+                     Classes="muted"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     TextAlignment="Center"
+                     MaxWidth="360"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding IsEmpty}" />
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- ================= клиенты ================= -->
+    <Border Grid.Row="2" Classes="card" ClipToBounds="True" IsVisible="{Binding ShowCustomers}">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <StackPanel Margin="20,16,20,14" Spacing="3">
+          <TextBlock Text="Клиенты"
+                     FontFamily="{StaticResource DisplayFont}"
+                     FontSize="17"
+                     FontWeight="Bold" />
+          <TextBlock Classes="muted"
+                     Text="Нажмите на клиента, чтобы открыть историю заказов и повторить заказ" />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource TableHeaderBrush}"
+                BorderBrush="{DynamicResource LineBrush}"
+                BorderThickness="0,1,0,1"
+                Padding="20,10">
+          <Grid ColumnDefinitions="50,*,150,70,110,110">
+            <TextBlock Classes="column" Text="№" />
+            <TextBlock Grid.Column="1" Classes="column" Text="КЛИЕНТ" />
+            <TextBlock Grid.Column="2" Classes="column" Text="ТЕЛЕФОН" />
+            <TextBlock Grid.Column="3" Classes="column" Text="ЗАКАЗОВ" HorizontalAlignment="Right" />
+            <TextBlock Grid.Column="4" Classes="column" Text="СУММА" HorizontalAlignment="Right" />
+            <TextBlock Grid.Column="5" Classes="column" Text="ПОСЛЕДНИЙ" HorizontalAlignment="Right" />
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="2">
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding CustomerRows}" Margin="4,8,4,14">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CustomerListRowViewModel">
+                  <Button Theme="{StaticResource RowButton}" Command="{Binding OpenCommand}">
+                    <Border Classes="row" Padding="16,10" Margin="0,0,0,8">
+                      <Grid ColumnDefinitions="50,*,150,70,110,110">
+                        <TextBlock Text="{Binding NumberText}"
+                                   Classes="muted"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Phone}"
+                                   Classes="secondary"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding OrdersText}"
+                                   FontSize="12.5"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4"
+                                   Text="{Binding RevenueText}"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5"
+                                   Text="{Binding LastOrderText}"
+                                   Classes="muted"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <TextBlock Text="{Binding CustomerEmptyText}"
+                     Classes="muted"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center"
+                     TextAlignment="Center"
+                     MaxWidth="360"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding IsCustomerListEmpty}" />
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- ================= карточка клиента ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsCustomerOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border HorizontalAlignment="Right"
+              Width="460"
+              Margin="0,10,10,10"
+              Background="{DynamicResource SurfaceBrush}"
+              BorderBrush="{DynamicResource LineBrush}"
+              BorderThickness="1"
+              CornerRadius="14"
+              BoxShadow="0 20 50 0 #332E211B">
+        <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="14" Margin="22,20,22,18">
+
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="dialog-title" Text="{Binding CustomerTitle}" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding CustomerPhone}" Classes="muted" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Theme="{StaticResource IconButton}"
+                    Command="{Binding CloseCustomerCommand}"
+                    VerticalAlignment="Top"
+                    ToolTip.Tip="Закрыть (Esc)">
+              <Path Data="{StaticResource IconClose}"
+                    Stroke="{Binding $parent[Button].Foreground}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    Width="14"
+                    Height="14"
+                    Stretch="Uniform" />
+            </Button>
+          </Grid>
+
+          <Border Grid.Row="1"
+                  Background="{DynamicResource SurfaceAltBrush}"
+                  BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="1"
+                  CornerRadius="10"
+                  Padding="14,12">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="column" Text="СТАТИСТИКА" />
+              <TextBlock Text="{Binding CustomerStats}" TextWrapping="Wrap" FontSize="12.5" />
+            </StackPanel>
+          </Border>
+
+          <Grid Grid.Row="2">
+            <ScrollViewer>
+              <StackPanel Spacing="8">
+                <ItemsControl ItemsSource="{Binding CustomerOrders}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CustomerOrderRowViewModel">
+                      <Button Theme="{StaticResource RowButton}" Command="{Binding OpenCommand}">
+                        <Border Classes="row" Padding="12,9" Margin="0,0,0,8">
+                          <Grid ColumnDefinitions="Auto,*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+                            <TextBlock Text="{Binding NumberText}" FontSize="12.5" FontWeight="Bold" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding DueText}"
+                                       Classes="muted"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding StatusText}"
+                                       Foreground="{Binding StatusBrush}"
+                                       FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="3"
+                                       Text="{Binding TotalText}"
+                                       FontSize="12.5"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="1"
+                                       Grid.ColumnSpan="3"
+                                       Text="{Binding PaymentText}"
+                                       Classes="muted"
+                                       FontSize="10.5"
+                                       Margin="0,3,0,0" />
+                          </Grid>
+                        </Border>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="Заказов пока нет."
+                           Classes="muted"
+                           IsVisible="{Binding CustomerOrdersEmpty}" />
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+
+          <StackPanel Grid.Row="3" Spacing="10">
+            <TextBlock Classes="error"
+                       Text="{Binding CustomerError}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding CustomerError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Удалить клиента"
+                      Foreground="{DynamicResource DangerBrush}"
+                      BorderBrush="{DynamicResource DangerBorderBrush}"
+                      Padding="10,6"
+                      FontSize="11.5"
+                      HorizontalAlignment="Stretch"
+                      Command="{Binding DeleteCustomerCommand}" />
+              <Button Grid.Column="1"
+                      Theme="{StaticResource SecondaryButton}"
+                      Content="Новый заказ"
+                      Padding="10,6"
+                      FontSize="11.5"
+                      HorizontalAlignment="Stretch"
+                      Command="{Binding NewOrderForCustomerCommand}" />
+              <Button Grid.Column="2"
+                      Theme="{StaticResource PrimaryButton}"
+                      Content="Повторить заказ"
+                      Padding="10,6"
+                      FontSize="11.5"
+                      HorizontalAlignment="Stretch"
+                      Command="{Binding RepeatLastOrderCommand}"
+                      IsEnabled="{Binding CanRepeatCustomerOrder}" />
+            </Grid>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ================= детали заказа ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsDetailsOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border HorizontalAlignment="Right"
+              Width="460"
+              Margin="0,10,10,10"
+              Background="{DynamicResource SurfaceBrush}"
+              BorderBrush="{DynamicResource LineBrush}"
+              BorderThickness="1"
+              CornerRadius="14"
+              BoxShadow="0 20 50 0 #332E211B">
+        <Grid RowDefinitions="Auto,*,Auto" RowSpacing="14" Margin="22,20,22,18">
+
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="4">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="dialog-title" Text="{Binding DetailsNumber}" />
+                <TextBlock Text="{Binding DetailsStatus}"
+                           Foreground="{Binding DetailsStatusBrush}"
+                           FontSize="12.5"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="{Binding DetailsClient}" FontSize="13" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding DetailsPhone}" Classes="muted" />
+              <TextBlock Text="{Binding DetailsCustomer}" Classes="muted" FontSize="11" />
+              <TextBlock Text="{Binding DetailsCreated}" Classes="muted" FontSize="11" />
+              <TextBlock Text="{Binding DetailsDue}" Classes="muted" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Theme="{StaticResource IconButton}"
+                    Command="{Binding CloseDetailsCommand}"
+                    VerticalAlignment="Top"
+                    ToolTip.Tip="Закрыть (Esc)">
+              <Path Data="{StaticResource IconClose}"
+                    Stroke="{Binding $parent[Button].Foreground}"
+                    StrokeThickness="1.7"
+                    StrokeLineCap="Round"
+                    Width="14"
+                    Height="14"
+                    Stretch="Uniform" />
+            </Button>
+          </Grid>
+
+          <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="14">
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Padding="14,12">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="column" Text="СТАТУС" />
+                  <WrapPanel>
+                    <Button Theme="{StaticResource PillButton}"
+                            Classes="tab"
+                            Classes.active="{Binding DetailsIsNew}"
+                            Content="Новый"
+                            Command="{Binding SetStatusNewCommand}"
+                            Margin="0,0,6,6" />
+                    <Button Theme="{StaticResource PillButton}"
+                            Classes="tab"
+                            Classes.active="{Binding DetailsIsCooking}"
+                            Content="Готовится"
+                            Command="{Binding SetStatusCookingCommand}"
+                            Margin="0,0,6,6" />
+                    <Button Theme="{StaticResource PillButton}"
+                            Classes="tab"
+                            Classes.active="{Binding DetailsIsReady}"
+                            Content="Готов"
+                            Command="{Binding SetStatusReadyCommand}"
+                            Margin="0,0,6,6" />
+                    <Button Theme="{StaticResource PillButton}"
+                            Classes="tab"
+                            Classes.active="{Binding DetailsIsDone}"
+                            Content="Выдан"
+                            Command="{Binding SetStatusDoneCommand}"
+                            Margin="0,0,6,6" />
+                    <Button Theme="{StaticResource PillButton}"
+                            Classes="tab"
+                            Classes.active="{Binding DetailsIsCancelled}"
+                            Content="Отменён"
+                            Command="{Binding SetStatusCancelledCommand}"
+                            Margin="0,0,6,6" />
+                  </WrapPanel>
+                  <TextBlock Classes="muted"
+                             TextWrapping="Wrap"
+                             Text="Выберите нужный статус — так можно исправить случайное нажатие и вернуть заказ из архива." />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Padding="14,12">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="column" Text="СОСТАВ" />
+                  <ItemsControl ItemsSource="{Binding DetailsItems}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:OrderItemDetailRowViewModel">
+                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="0,0,0,4">
+                          <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Text="{Binding QuantityText}" Classes="muted" />
+                          <TextBlock Grid.Column="2" Text="{Binding TotalText}" FontWeight="SemiBold" FontSize="12.5" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Padding="14,12">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Classes="column" Text="ЧТО КУПИТЬ" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding DetailsShoppingCost}"
+                                 FontWeight="Bold"
+                                 FontSize="12.5"
+                                 VerticalAlignment="Center" />
+                      <Button Theme="{StaticResource SecondaryButton}"
+                              Content="Копировать"
+                              Padding="8,3"
+                              FontSize="10.5"
+                              Click="OnCopyShopping" />
+                      <Button Theme="{StaticResource SecondaryButton}"
+                              Content="Печать"
+                              Padding="8,3"
+                              FontSize="10.5"
+                              Click="OnPrintShopping" />
+                    </StackPanel>
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding DetailsShoppingGroups}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:OrderShoppingGroupViewModel">
+                        <Border Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{DynamicResource RowBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="9"
+                                Padding="10,8"
+                                Margin="0,0,0,8">
+                          <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                              <StackPanel Spacing="1">
+                                <TextBlock Text="{Binding Name}"
+                                           FontSize="12.5"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding QuantityText}" Classes="muted" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="1"
+                                         Text="{Binding CostText}"
+                                         FontWeight="SemiBold"
+                                         FontSize="12.5"
+                                         VerticalAlignment="Center" />
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding Lines}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ShoppingRowViewModel">
+                                  <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" Margin="0,0,0,3">
+                                    <CheckBox IsChecked="{Binding IsChecked}"
+                                              VerticalAlignment="Center"
+                                              Margin="0,0,2,0" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Name}"
+                                               FontSize="12"
+                                               Opacity="{Binding RowOpacity}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding AmountText}"
+                                               Classes="muted"
+                                               Opacity="{Binding RowOpacity}" />
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding CostText}"
+                                               FontSize="12"
+                                               Opacity="{Binding RowOpacity}" />
+                                  </Grid>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="Рецепт изменён или удалён — состав недоступен."
+                                       Classes="muted"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding IsEmpty}" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="Пока нет данных о составе — рецепт мог быть изменён или удалён."
+                             Classes="muted"
+                             TextWrapping="Wrap"
+                             IsVisible="{Binding DetailsShoppingEmpty}" />
+                  <TextBlock Classes="muted" Text="Сумма покупок — по текущим средним ценам." />
+                  <TextBlock Text="{Binding ShoppingNotice}"
+                             Foreground="{DynamicResource SuccessBrush}"
+                             FontSize="12"
+                             IsVisible="{Binding HasShoppingNotice}" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Padding="14,12">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="column" Text="УПАКОВКА" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding DetailsPackagingTotal}"
+                               FontWeight="Bold"
+                               FontSize="12.5" />
+                  </Grid>
+
+                  <ItemsControl ItemsSource="{Binding DetailsPackaging}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:OrderPackagingRowViewModel">
+                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,0,0,4">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="12.5"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding SizeText}"
+                                       Classes="muted"
+                                       IsVisible="{Binding HasSize}" />
+                          </StackPanel>
+
+                          <TextBlock Grid.Column="1"
+                                     Text="{Binding QuantityText}"
+                                     Classes="muted"
+                                     VerticalAlignment="Center" />
+
+                          <TextBlock Grid.Column="2"
+                                     Text="{Binding TotalText}"
+                                     FontWeight="SemiBold"
+                                     FontSize="12.5"
+                                     VerticalAlignment="Center" />
+
+                          <Button Grid.Column="3"
+                                  Theme="{StaticResource DangerIconButton}"
+                                  Width="24"
+                                  Height="24"
+                                  Command="{Binding RemoveCommand}"
+                                  IsVisible="{Binding CanRemove}"
+                                  ToolTip.Tip="Убрать упаковку">
+                            <Path Data="{StaticResource IconClose}"
+                                  Stroke="{Binding $parent[Button].Foreground}"
+                                  StrokeThickness="1.7"
+                                  StrokeLineCap="Round"
+                                  Width="11"
+                                  Height="11"
+                                  Stretch="Uniform" />
+                          </Button>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <TextBlock Text="Без упаковки"
+                             Classes="muted"
+                             IsVisible="{Binding DetailsPackagingEmpty}" />
+
+                  <Grid ColumnDefinitions="*,96,Auto" ColumnSpacing="6" IsVisible="{Binding CanEditPackaging}">
+                    <ComboBox ItemsSource="{Binding PackagingOptions}"
+                              SelectedItem="{Binding PackagingToAdd}"
+                              PlaceholderText="Выберите коробку"
+                              HorizontalAlignment="Stretch" />
+
+                    <NumericUpDown Grid.Column="1"
+                                   Value="{Binding PackagingQuantity}"
+                                   Minimum="1"
+                                   Maximum="1000"
+                                   Increment="1"
+                                   FormatString="0" />
+
+                    <Button Grid.Column="2"
+                            Theme="{StaticResource SecondaryButton}"
+                            Content="Добавить"
+                            Padding="10,4"
+                            FontSize="11"
+                            Command="{Binding AddPackagingCommand}" />
+                  </Grid>
+
+                  <Button Theme="{StaticResource SecondaryButton}"
+                          Content="Без упаковки"
+                          Padding="10,4"
+                          FontSize="11"
+                          HorizontalAlignment="Left"
+                          Command="{Binding ClearPackagingCommand}"
+                          IsEnabled="{Binding CanEditPackaging}"
+                          IsVisible="{Binding !DetailsPackagingEmpty}" />
+
+                  <TextBlock Classes="muted" Text="Цена коробки — с наценкой по заказу." />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Padding="14,12">
+                <StackPanel Spacing="8">
+                  <TextBlock Classes="column" Text="ОПЛАТА" />
+
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="secondary" Text="Оплачено" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding DetailsPaidText}" FontWeight="SemiBold" FontSize="12.5" />
+                  </Grid>
+
+                  <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding DetailsHasDiscount}">
+                    <TextBlock Classes="secondary" Text="Скидка" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding DetailsDiscountText}" FontWeight="SemiBold" FontSize="12.5" />
+                  </Grid>
+
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="secondary" Text="Остаток" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding DetailsRemainingText}" FontWeight="Bold" FontSize="12.5" />
+                  </Grid>
+
+                  <TextBlock Text="Заказ оплачен полностью"
+                             Foreground="{DynamicResource SuccessBrush}"
+                             FontSize="12"
+                             IsVisible="{Binding DetailsIsPaid}" />
+
+                  <Button Theme="{StaticResource SecondaryButton}"
+                          Content="Отметить оплаченным"
+                          Padding="10,4"
+                          FontSize="11"
+                          HorizontalAlignment="Left"
+                          Command="{Binding MarkOrderPaidCommand}"
+                          IsVisible="{Binding CanMarkPaid}" />
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource SurfaceAltBrush}"
+                      BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Padding="14,12"
+                      IsVisible="{Binding DetailsHasComment}">
+                <StackPanel Spacing="5">
+                  <TextBlock Classes="column" Text="КОММЕНТАРИЙ" />
+                  <TextBlock Text="{Binding DetailsComment}" TextWrapping="Wrap" FontSize="12.5" />
+                </StackPanel>
+              </Border>
+
+              <TextBlock Classes="error"
+                         Text="{Binding DetailsError}"
+                         IsVisible="{Binding DetailsError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </ScrollViewer>
+
+          <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Classes="muted" Text="Итого по заказу" />
+              <TextBlock Classes="muted"
+                         Text="{Binding DetailsPackagingNote}"
+                         IsVisible="{Binding HasPackagingNote}" />
+            </StackPanel>
+            <TextBlock Grid.Column="1"
+                       Text="{Binding DetailsMarkupText}"
+                       Classes="muted"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding HasDetailsMarkup}" />
+            <TextBlock Grid.Column="2" Text="{Binding DetailsTotal}" FontFamily="{StaticResource DisplayFont}" FontSize="20" FontWeight="Bold" />
+          </Grid>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ================= форма заказа ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsFormOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border Classes="dialog" Width="780" MaxHeight="780" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <ScrollViewer>
+          <StackPanel Spacing="14">
+
+            <TextBlock Classes="dialog-title" Text="{Binding FormTitle}" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Имя" />
+                <TextBox Text="{Binding FormFirstName}" Watermark="Иван" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Фамилия (необязательно)" />
+                <TextBox Text="{Binding FormLastName}" Watermark="Петров" />
+              </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Телефон" />
+                <TextBox Text="{Binding FormPhone}" Watermark="+7 900 000-00-00" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Дата выдачи" />
+                <DatePicker SelectedDate="{Binding FormDueDate}"
+                            DayFormat="dd"
+                            MonthFormat="MM"
+                            YearFormat="yyyy"
+                            HorizontalAlignment="Stretch" />
+              </StackPanel>
+            </Grid>
+
+            <Border Background="{DynamicResource AccentSoftBrush}"
+                    BorderBrush="{DynamicResource AccentSoftHoverBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="12,9"
+                    IsVisible="{Binding HasCustomerSuggestions}">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="column" Text="КЛИЕНТЫ ИЗ БАЗЫ" />
+                <ItemsControl ItemsSource="{Binding CustomerSuggestions}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CustomerSuggestionViewModel">
+                      <Button Theme="{StaticResource RowButton}" Command="{Binding FillCommand}">
+                        <Border Classes="row" Padding="10,7" Margin="0,0,0,4">
+                          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <TextBlock Text="{Binding NumberText}"
+                                       Classes="muted"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Name}"
+                                       FontSize="12.5"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding Phone}"
+                                       Classes="muted"
+                                       VerticalAlignment="Center" />
+                          </Grid>
+                        </Border>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="muted"
+                           Text="Нажмите на клиента — имя, фамилия и телефон заполнятся сами." />
+              </StackPanel>
+            </Border>
+
+            <StackPanel>
+              <TextBlock Classes="field-label" Text="Комментарий (необязательно)" />
+              <TextBox Text="{Binding FormComment}"
+                       Watermark="Например, к 18:00, без орехов"
+                       AcceptsReturn="True"
+                       TextWrapping="Wrap"
+                       Height="58" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Classes="field-label" Text="Состав" VerticalAlignment="Center" />
+              <Button Grid.Column="1"
+                      Theme="{StaticResource SecondaryButton}"
+                      Padding="12,5"
+                      FontSize="12"
+                      Content="+ Блюдо"
+                      Command="{Binding AddLineCommand}" />
+            </Grid>
+
+            <Border Background="{DynamicResource SurfaceAltBrush}"
+                    BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="12,8">
+              <ScrollViewer MaxHeight="220">
+                <ItemsControl ItemsSource="{Binding Lines}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OrderLineViewModel">
+                      <Grid ColumnDefinitions="*,100,30,110,34" ColumnSpacing="8" Margin="0,0,0,6">
+                        <ComboBox ItemsSource="{Binding Options}"
+                                  SelectedItem="{Binding Recipe}"
+                                  HorizontalAlignment="Stretch" />
+
+                        <NumericUpDown Grid.Column="1"
+                                       Value="{Binding Quantity}"
+                                       Minimum="{Binding Minimum}"
+                                       Maximum="100000"
+                                       Increment="{Binding Increment}"
+                                       FormatString="{Binding QuantityFormat}" />
+
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding UnitText}"
+                                   Classes="muted"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+
+                        <TextBlock Grid.Column="3"
+                                   Text="{Binding LineTotalText}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" />
+
+                        <Button Grid.Column="4"
+                                Theme="{StaticResource IconButton}"
+                                Command="{Binding RemoveCommand}"
+                                ToolTip.Tip="Убрать строку">
+                          <Path Data="{StaticResource IconClose}"
+                                Stroke="{Binding $parent[Button].Foreground}"
+                                StrokeThickness="1.7"
+                                StrokeLineCap="Round"
+                                Width="12"
+                                Height="12"
+                                Stretch="Uniform" />
+                        </Button>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Предоплата, ₽" />
+                <NumericUpDown Value="{Binding FormPaidAmount}"
+                               Minimum="0"
+                               Maximum="10000000"
+                               Increment="100"
+                               HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Скидка, ₽" />
+                <NumericUpDown Value="{Binding FormDiscountAmount}"
+                               Minimum="0"
+                               Maximum="10000000"
+                               Increment="50"
+                               HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Classes="field-label" Text="Остаток к оплате" />
+                <Border Background="{DynamicResource SurfaceAltBrush}"
+                        BorderBrush="{DynamicResource LineBrush}"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        Padding="12,9">
+                  <TextBlock Text="{Binding FormRemainingText}"
+                             FontSize="14"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center" />
+                </Border>
+              </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel VerticalAlignment="Center" Spacing="1">
+                <TextBlock Classes="muted" Text="Итого" />
+                <TextBlock Classes="muted"
+                           Text="{Binding FormBaseTotalText, StringFormat='Без скидки: {0}'}"
+                           FontSize="10.5"
+                           IsVisible="{Binding FormHasDiscount}" />
+              </StackPanel>
+              <TextBlock Grid.Column="1"
+                         Text="{Binding FormTotalText}"
+                         FontFamily="{StaticResource DisplayFont}"
+                         FontSize="20"
+                         FontWeight="Bold" />
+            </Grid>
+
+            <TextBlock Classes="error"
+                       Text="{Binding FormError}"
+                       IsVisible="{Binding FormError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+              <Button Theme="{StaticResource SecondaryButton}" Content="Отмена" Command="{Binding CloseFormCommand}" />
+              <Button Theme="{StaticResource PrimaryButton}" Content="Сохранить" Command="{Binding SaveOrderCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- ================= подтверждение отмены ================= -->
+    <Grid Grid.RowSpan="3" IsVisible="{Binding IsConfirmOpen}" Margin="-16" Background="Transparent">
+      <Border Background="{DynamicResource DimBrush}" CornerRadius="16" />
+      <Border Classes="dialog" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="Отменить заказ?" />
+          <TextBlock Classes="secondary" Text="{Binding ConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}" Content="Нет" Command="{Binding CloseConfirmCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}" Content="{Binding ConfirmButtonText}" Command="{Binding ConfirmCancelCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

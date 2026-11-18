@@ -1,0 +1,183 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SweetTaste.Desktop.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="SweetTaste.Desktop.Views.ProfileView"
+             x:DataType="vm:ProfileViewModel">
+
+  <ScrollViewer>
+    <StackPanel Margin="30,26,30,26" Spacing="18">
+
+      <StackPanel Spacing="6">
+        <TextBlock Classes="display" Text="Профиль" />
+        <TextBlock Classes="secondary"
+                   Text="Как вас показывать в приложении, чеках и сообщениях клиенту" />
+      </StackPanel>
+
+      <Grid ColumnDefinitions="300,*" ColumnSpacing="18">
+
+        <!-- ================= фото ================= -->
+        <Border Classes="card" Padding="20,18">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="3" HorizontalAlignment="Center">
+              <TextBlock Text="Логотип или фото"
+                         HorizontalAlignment="Center"
+                         FontFamily="{StaticResource DisplayFont}"
+                         FontSize="18"
+                         FontWeight="Bold" />
+              <TextBlock Classes="muted"
+                         HorizontalAlignment="Center"
+                         TextAlignment="Center"
+                         Text="Появится в боковом меню" />
+            </StackPanel>
+
+            <Border Width="190"
+                    Height="190"
+                    HorizontalAlignment="Center"
+                    CornerRadius="18"
+                    ClipToBounds="True"
+                    Background="{DynamicResource SurfaceAltBrush}"
+                    BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1">
+              <Grid>
+                <TextBlock Text="{Binding Initials}"
+                           FontFamily="{StaticResource DisplayFont}"
+                           FontSize="54"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource AccentDarkBrush}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding !HasPhoto}" />
+                <Image Source="{Binding Photo}"
+                       Stretch="UniformToFill"
+                       IsVisible="{Binding HasPhoto}" />
+              </Grid>
+            </Border>
+
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Загрузить фото"
+                    HorizontalAlignment="Center"
+                    Click="OnPickPhoto" />
+
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Удалить фото"
+                    Foreground="{DynamicResource DangerBrush}"
+                    BorderBrush="{DynamicResource DangerBorderBrush}"
+                    HorizontalAlignment="Center"
+                    Command="{Binding RemovePhotoCommand}"
+                    IsVisible="{Binding HasPhoto}" />
+
+            <TextBlock Classes="muted"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Text="Квадратное изображение выглядит лучше. Фото сжимается и хранится в базе вместе с бэкапами." />
+          </StackPanel>
+        </Border>
+
+        <!-- ================= данные ================= -->
+        <Border Grid.Column="1" Classes="card" Padding="20,18">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Данные кондитера"
+                         FontFamily="{StaticResource DisplayFont}"
+                         FontSize="18"
+                         FontWeight="Bold" />
+              <TextBlock Classes="muted" Text="Всё необязательно — можно заполнить позже" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Название кондитерской" />
+                <TextBox Text="{Binding Name}" Watermark="Например, Sweet Taste" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Имя кондитера" />
+                <TextBox Text="{Binding OwnerName}" Watermark="Например, Анна Смирнова" />
+              </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Instagram" />
+                <TextBox Text="{Binding Instagram}" Watermark="@sweet_taste" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Telegram" />
+                <TextBox Text="{Binding Telegram}" Watermark="@sweet_taste" />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel>
+              <TextBlock Classes="field-label" Text="Сайт" />
+              <TextBox Text="{Binding Website}" Watermark="https://example.ru" />
+            </StackPanel>
+
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       Text="Название и имя подставляются в боковое меню. Соцсети пригодятся для будущих чеков и сообщений." />
+
+            <TextBlock Classes="error"
+                       Text="{Binding Error}"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding Error, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+            <TextBlock Text="{Binding SavedMessage}"
+                       Foreground="{DynamicResource SuccessBrush}"
+                       FontSize="12.5"
+                       IsVisible="{Binding HasSavedMessage}" />
+
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Content="Сохранить"
+                    Command="{Binding SaveCommand}"
+                    HorizontalAlignment="Right" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <Border Classes="card" Padding="20,18">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Перенос данных"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="18"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       Text="Полная копия базы: ингредиенты, закупки, рецепты, заказы, клиенты, упаковка, профиль и настройки. Файл можно сохранить на флешку или перенести на другой компьютер." />
+          </StackPanel>
+
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"
+                       Text="Рядом с базой сохраняется файл-инструкция. Выгрузка не зашифрована — храните её в надёжном месте." />
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="10"
+                        VerticalAlignment="Center">
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Открыть папку"
+                      Command="{Binding OpenExportFolderCommand}"
+                      IsVisible="{Binding CanOpenExportFolder}" />
+              <Button Theme="{StaticResource PrimaryButton}"
+                      Content="Выгрузить данные"
+                      Click="OnExportData" />
+            </StackPanel>
+          </Grid>
+
+          <TextBlock Text="{Binding ExportMessage}"
+                     Foreground="{DynamicResource SuccessBrush}"
+                     FontSize="12.5"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasExportMessage}" />
+
+          <TextBlock Classes="error"
+                     Text="{Binding ExportError}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding ExportError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,251 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:SweetTaste.Desktop.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             x:Class="SweetTaste.Desktop.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <Grid>
+    <ScrollViewer>
+      <StackPanel Margin="30,26,30,26" Spacing="18">
+
+      <StackPanel Spacing="6">
+        <TextBlock Classes="display" Text="Настройки" />
+        <TextBlock Classes="secondary"
+                   Text="Внешний вид, резервные копии и значения для новых рецептов" />
+      </StackPanel>
+
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="18">
+
+        <!-- ================= внешний вид ================= -->
+        <Border Classes="card" Padding="20,18">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Внешний вид"
+                         FontFamily="{StaticResource DisplayFont}"
+                         FontSize="18"
+                         FontWeight="Bold" />
+              <TextBlock Classes="muted" Text="Тема применяется сразу, перезапуск не нужен" />
+            </StackPanel>
+
+            <StackPanel>
+              <TextBlock Classes="field-label" Text="Тема" />
+              <ComboBox ItemsSource="{Binding ThemeOptions}"
+                        SelectedItem="{Binding SelectedTheme}"
+                        HorizontalAlignment="Stretch" />
+              <TextBlock Classes="muted"
+                         Margin="0,7,0,0"
+                         TextWrapping="Wrap"
+                         Text="«Как в системе» следует теме Windows. Тёмная — тёплый шоколад с терракотовым акцентом." />
+            </StackPanel>
+
+            <StackPanel>
+              <TextBlock Classes="field-label" Text="Масштаб интерфейса, %" />
+              <ComboBox ItemsSource="{Binding ScaleOptions}"
+                        SelectedItem="{Binding SelectedScale}"
+                        HorizontalAlignment="Stretch" />
+              <TextBlock Classes="muted"
+                         Margin="0,7,0,0"
+                         TextWrapping="Wrap"
+                         Text="90–100% — компактнее, 110–125% — крупнее. Окно подстроится под экран." />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ================= новые рецепты ================= -->
+        <Border Grid.Column="1" Classes="card" Padding="20,18">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="3">
+              <TextBlock Text="Новые рецепты"
+                         FontFamily="{StaticResource DisplayFont}"
+                         FontSize="18"
+                         FontWeight="Bold" />
+              <TextBlock Classes="muted" Text="Подставляются при создании рецепта" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
+                <TextBlock Classes="field-label" Text="Наценка, %" />
+                <NumericUpDown Value="{Binding Markup}"
+                               Minimum="0"
+                               Maximum="1000"
+                               Increment="10"
+                               FormatString="0"
+                               HorizontalAlignment="Stretch" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="field-label" Text="Единица выхода" />
+                <ComboBox ItemsSource="{Binding UnitsList}"
+                          SelectedItem="{Binding RecipeUnit}"
+                          HorizontalAlignment="Stretch" />
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       Text="Существующие рецепты не меняются: настройка действует только на новые." />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- ================= резервные копии ================= -->
+      <Border Classes="card" Padding="20,18">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Резервные копии"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="18"
+                       FontWeight="Bold" />
+            <TextBlock Classes="muted"
+                       Text="Ежедневная копия создаётся при запуске приложения" />
+          </StackPanel>
+
+          <StackPanel>
+            <TextBlock Classes="field-label" Text="Файл базы данных" />
+            <TextBox Text="{Binding DatabasePath}"
+                     IsReadOnly="True"
+                     HorizontalAlignment="Stretch" />
+          </StackPanel>
+
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel>
+              <TextBlock Classes="field-label" Text="Хранить копии, дней" />
+              <ComboBox ItemsSource="{Binding RetentionOptions}"
+                        SelectedItem="{Binding SelectedRetention}"
+                        HorizontalAlignment="Stretch" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="10"
+                        VerticalAlignment="Bottom">
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Открыть папку"
+                      Command="{Binding OpenBackupFolderCommand}" />
+              <Button Theme="{StaticResource PrimaryButton}"
+                      Content="Сделать бэкап сейчас"
+                      Command="{Binding CreateBackupCommand}" />
+            </StackPanel>
+          </Grid>
+
+          <TextBlock Classes="secondary"
+                     Text="{Binding BackupMessage}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasBackupMessage}" />
+
+          <Button Theme="{StaticResource PrimaryButton}"
+                  Content="Перезапустить приложение"
+                  Command="{Binding RestartApplicationCommand}"
+                  HorizontalAlignment="Left"
+                  IsVisible="{Binding IsRestoreCompleted}" />
+
+          <Border Background="{DynamicResource SurfaceAltBrush}"
+                  BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="1"
+                  CornerRadius="10"
+                  Padding="12,10">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="2">
+                <TextBlock Text="Восстановление из файла"
+                           FontSize="12.5"
+                           FontWeight="SemiBold" />
+                <TextBlock Classes="muted"
+                           TextWrapping="Wrap"
+                           Text="Заменит текущие данные данными из выбранной базы. Перед заменой создаётся резервная копия." />
+              </StackPanel>
+              <Button Grid.Column="1"
+                      Theme="{StaticResource SecondaryButton}"
+                      Content="Выбрать файл..."
+                      VerticalAlignment="Center"
+                      Click="OnRestoreClick" />
+            </Grid>
+          </Border>
+
+          <TextBlock Classes="error"
+                     Text="{Binding BackupError}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding BackupError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+
+          <TextBlock Classes="muted"
+                     TextWrapping="Wrap"
+                     Text="Свежая копия перед миграцией базы создаётся автоматически. Ручной бэкап получает метку времени и не перезаписывается." />
+        </StackPanel>
+      </Border>
+
+      <!-- ================= опасная зона ================= -->
+      <Border Classes="card"
+              Padding="20,18"
+              BorderBrush="{DynamicResource DangerBorderBrush}">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="3">
+            <TextBlock Text="Опасная зона"
+                       FontFamily="{StaticResource DisplayFont}"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource DangerBrush}" />
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       Text="Действия необратимы. Перед очисткой лучше сделать резервную копию." />
+          </StackPanel>
+
+          <StackPanel Spacing="8">
+            <TextBlock Text="Удаление заказов" FontSize="13" FontWeight="SemiBold" />
+            <TextBlock Classes="muted"
+                       TextWrapping="Wrap"
+                       Text="Отчёты строятся по выданным заказам, поэтому удаление заказов очищает и отчёты. Ингредиенты, рецепты и закупки не затрагиваются." />
+            <TextBlock Classes="muted" Text="{Binding OrdersSummary}" />
+
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Очистить архив"
+                      Foreground="{DynamicResource DangerBrush}"
+                      BorderBrush="{DynamicResource DangerBorderBrush}"
+                      Command="{Binding ClearReportsCommand}"
+                      IsEnabled="{Binding HasArchivedOrders}" />
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Удалить все заказы"
+                      Foreground="{DynamicResource DangerBrush}"
+                      BorderBrush="{DynamicResource DangerBorderBrush}"
+                      Command="{Binding ClearAllOrdersCommand}"
+                      IsEnabled="{Binding HasCurrentOrders}" />
+            </StackPanel>
+          </StackPanel>
+
+          <TextBlock Text="{Binding DangerMessage}"
+                     Foreground="{DynamicResource SuccessBrush}"
+                     FontSize="12.5"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasDangerMessage}" />
+
+          <TextBlock Classes="error"
+                     Text="{Binding DangerError}"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding DangerError, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+      </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ================= подтверждение ================= -->
+    <Grid IsVisible="{Binding IsConfirmOpen}" Background="{DynamicResource DimBrush}">
+      <Border Classes="dialog"
+              Width="500"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="Подтвердите действие" />
+          <TextBlock Classes="secondary" Text="{Binding ConfirmText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Отмена"
+                    Command="{Binding CancelConfirmCommand}" />
+            <Button Theme="{StaticResource PrimaryButton}"
+                    Content="{Binding ConfirmButtonText}"
+                    Background="{DynamicResource DangerBrush}"
+                    Command="{Binding ConfirmDangerCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>
