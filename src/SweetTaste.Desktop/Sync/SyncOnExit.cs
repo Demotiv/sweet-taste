@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using SweetTaste.Core.Services;
 using SweetTaste.Core.Storage;
 using SweetTaste.Core.Sync;
 
@@ -26,10 +27,17 @@ internal static class SyncOnExit
         AppDatabase database,
         SupabaseAuthClient auth,
         SyncService sync,
-        ISessionStore sessions)
+        ISessionStore sessions,
+        SettingsService settings)
     {
         try
         {
+            if (!settings.UploadOnExit)
+            {
+                Log("выгрузка при закрытии отключена в настройках");
+                return;
+            }
+
             var session = sessions.Load();
             if (session is null)
             {

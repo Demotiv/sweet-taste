@@ -18,6 +18,7 @@ public class SettingsTests
         Assert.Equal(100, settings.DefaultMarkupPercent);
         Assert.Equal(RecipeUnits.Pieces, settings.DefaultRecipeUnit);
         Assert.Equal(100, settings.UiScalePercent);
+        Assert.True(settings.UploadOnExit);
     }
 
     [Fact]
@@ -151,5 +152,53 @@ public class SettingsTests
         }
 
         Assert.Throws<ValidationException>(() => target.Database.RestoreFrom(copy, 14));
+    }
+
+    [Fact]
+    public void UploadOnExit_DefaultsToTrue()
+    {
+        using var db = new TestDatabase();
+        var settings = new SettingsService(db.Database);
+
+        Assert.True(settings.UploadOnExit);
+    }
+
+    [Fact]
+    public void UploadOnExit_PersistsAfterReopen()
+    {
+        using var db = new TestDatabase();
+        var settings = new SettingsService(db.Database);
+
+        settings.UploadOnExit = false;
+        Assert.False(new SettingsService(new AppDatabase(db.Database.FilePath)).UploadOnExit);
+
+        settings.UploadOnExit = true;
+        Assert.True(new SettingsService(new AppDatabase(db.Database.FilePath)).UploadOnExit);
+    }
+
+    [Fact]
+    public void UploadOnExit_FallsBackToTrueOnGarbage()
+    {
+        using var db = new TestDatabase();
+
+        // Схему и app_settings создаёт SettingsService; кеш снимается в его конструкторе,
+        // поэтому мусор нужно записать до создания проверяемого экземпляра.
+        _ = new SettingsService(db.Database);
+
+        using (var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+               {
+                   DataSource = db.Database.FilePath,
+                   Pooling = false,
+               }.ToString()))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "INSERT INTO app_settings (key, value) VALUES ('sync_upload_on_exit', 'abc') " +
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value;";
+            command.ExecuteNonQuery();
+        }
+
+        Assert.True(new SettingsService(new AppDatabase(db.Database.FilePath)).UploadOnExit);
     }
 }

@@ -53,6 +53,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         _markup = settings.DefaultMarkupPercent;
         _recipeUnit = settings.DefaultRecipeUnit;
         _selectedScale = settings.UiScalePercent;
+        _uploadOnExit = settings.UploadOnExit;
         _databasePath = settings.DatabasePath;
         ReloadOrderCounts();
         RestoreSession();
@@ -187,6 +188,9 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
     private bool _isCloudMomentStale;
 
     [ObservableProperty]
+    private bool _uploadOnExit;
+
+    [ObservableProperty]
     private bool _isArchiveOpen;
 
     [ObservableProperty]
@@ -240,6 +244,8 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         _settings.Theme = theme;
         App.ApplyTheme(theme);
     }
+
+    partial void OnUploadOnExitChanged(bool value) => _settings.UploadOnExit = value;
 
     partial void OnSelectedRetentionChanged(int value)
     {
@@ -389,7 +395,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
             SyncPassword = string.Empty;
             SignedInEmail = session.Email;
             IsSignedIn = true;
-            SyncMessage = "Вход выполнен. Данные выгружаются в облако при закрытии приложения.";
+            SyncMessage = "Вход выполнен.";
             HasSyncMessage = true;
             await RefreshDataMomentsAsync();
         }
@@ -866,11 +872,8 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
             var moment = CloudMoment(archive.Info.ArchivedAt);
 
             SyncMessage = backup is null
-                ? $"Восстановлено {rows} из версии от {moment}. " +
-                  "При закрытии приложение выгрузит восстановленные данные в облако."
-                : $"Восстановлено {rows} из версии от {moment}. " +
-                  $"Резервная копия: {Path.GetFileName(backup)}. " +
-                  "При закрытии приложение выгрузит восстановленные данные в облако.";
+                ? $"Восстановлено {rows} из версии от {moment}."
+                : $"Восстановлено {rows} из версии от {moment}. Резервная копия: {Path.GetFileName(backup)}.";
             HasSyncMessage = true;
             IsSyncRestartNeeded = true;
             ReloadOrderCounts();

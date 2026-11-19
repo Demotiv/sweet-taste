@@ -63,7 +63,7 @@ public partial class App : Application
             window.Opened += async (_, _) => await viewModel.CheckForUpdatesAsync();
 
             desktop.ShutdownRequested += (_, _) =>
-                SyncOnExit.Run(database, auth, sync, sessions);
+                SyncOnExit.Run(database, auth, sync, sessions, settings);
 
             desktop.Exit += (_, _) =>
             {

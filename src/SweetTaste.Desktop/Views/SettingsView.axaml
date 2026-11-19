@@ -93,6 +93,16 @@
                       IsEnabled="{Binding !IsSyncBusy}" />
             </StackPanel>
 
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+              <ToggleSwitch IsChecked="{Binding UploadOnExit}" VerticalAlignment="Top" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock TextWrapping="Wrap"
+                           Text="Выгружать данные в облако при закрытии приложения" />
+                <TextBlock Classes="muted" TextWrapping="Wrap"
+                           Text="Только автовыгрузка. Кнопки «Выгрузить в облако», «Загрузить из облака» и «История облака» работают всегда." />
+              </StackPanel>
+            </Grid>
+
             <Button Theme="{StaticResource PrimaryButton}"
                     Content="Перезапустить приложение"
                     Command="{Binding RestartApplicationCommand}"

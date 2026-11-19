@@ -17,6 +17,7 @@ public sealed class SettingsService
     private const string MarkupKey = "default_markup_percent";
     private const string UnitKey = "default_recipe_unit";
     private const string ScaleKey = "ui_scale_percent";
+    private const string UploadOnExitKey = "sync_upload_on_exit";
     private const int DefaultRetentionDays = 14;
 
     private readonly AppDatabase _database;
@@ -115,6 +116,13 @@ public sealed class SettingsService
         }
     }
 
+    /// <summary>Выгружать данные в облако при закрытии приложения.</summary>
+    public bool UploadOnExit
+    {
+        get => ParseBool(Get(UploadOnExitKey, "1"), true);
+        set => Set(UploadOnExitKey, value ? "1" : "0");
+    }
+
     /// <summary>Когда данные последний раз менялись на этом устройстве; null — ещё не менялись.</summary>
     /// <remarks>
     /// Читается из базы при каждом обращении, а не из кеша <c>_values</c>: отметку ставят
@@ -185,4 +193,11 @@ public sealed class SettingsService
 
     private static int ParseInt(string value, int fallback) =>
         int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : fallback;
+
+    private static bool ParseBool(string value, bool fallback) => value switch
+    {
+        "1" => true,
+        "0" => false,
+        _ => fallback,
+    };
 }
