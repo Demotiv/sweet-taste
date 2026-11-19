@@ -184,6 +184,9 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
     private bool _hasDataMoments;
 
     [ObservableProperty]
+    private bool _isCloudMomentStale;
+
+    [ObservableProperty]
     private bool _isArchiveOpen;
 
     [ObservableProperty]
@@ -419,6 +422,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         CloudDataMoment = string.Empty;
         HasUnsyncedChanges = false;
         HasDataMoments = false;
+        IsCloudMomentStale = false;
     }
 
     private void RestoreSession()
@@ -460,6 +464,34 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         HasDataMoments = IsSignedIn;
     }
 
+    /// <summary>Перечитывает время правки здесь и время выгрузки в облако по кнопке.</summary>
+    [RelayCommand]
+    private async Task RefreshCloudMomentAsync()
+    {
+        if (IsSyncBusy)
+        {
+            return;
+        }
+
+        IsSyncBusy = true;
+        SyncError = null;
+        HasSyncMessage = false;
+
+        try
+        {
+            await RefreshDataMomentsAsync();
+            IsCloudMomentStale = false;
+        }
+        catch (Exception ex)
+        {
+            SyncError = "Не удалось проверить облако: " + ex.Message;
+        }
+        finally
+        {
+            IsSyncBusy = false;
+        }
+    }
+
     /// <summary>Время последней выгрузки в облако или null, если облако пустое и недоступно.</summary>
     private async Task<DateTimeOffset?> ReadCloudMomentAsync()
     {
@@ -472,12 +504,16 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         try
         {
             var state = await _sync.ReadCloudStateAsync(session);
+            IsCloudMomentStale = false;
             return state?.TakenAt;
         }
         catch (Exception)
         {
             // Без сети или с протухшим токеном строка облака остаётся «нет данных»:
             // это подсказка в карточке, а не действие, и ошибку показывать незачем.
+            // Но «нет данных» и «не смогли прочитать» — разные вещи, поэтому
+            // карточка помечает строку как непроверенную.
+            IsCloudMomentStale = true;
             return null;
         }
     }

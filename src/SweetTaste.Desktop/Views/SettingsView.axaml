@@ -102,9 +102,18 @@
             <StackPanel Spacing="2" IsVisible="{Binding HasDataMoments}">
               <TextBlock Classes="muted" Text="{Binding LocalDataMoment}" />
               <TextBlock Classes="muted" Text="{Binding CloudDataMoment}" />
+              <TextBlock Classes="muted"
+                         TextWrapping="Wrap"
+                         Text="Облако не проверено: нет сети или сессия истекла."
+                         IsVisible="{Binding IsCloudMomentStale}" />
               <TextBlock Classes="error"
                          Text="Есть невыгруженные изменения."
                          IsVisible="{Binding HasUnsyncedChanges}" />
+              <Button Theme="{StaticResource SecondaryButton}"
+                      Content="Проверить облако"
+                      Command="{Binding RefreshCloudMomentCommand}"
+                      IsEnabled="{Binding !IsSyncBusy}"
+                      HorizontalAlignment="Left" />
             </StackPanel>
           </StackPanel>
 
