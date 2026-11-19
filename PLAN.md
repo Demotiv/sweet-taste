@@ -1250,7 +1250,8 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   «Вход выполнен.» и «Восстановлено N из версии от …» без обещания выгрузки.
   Тесты `UploadOnExit_DefaultsToTrue`, `UploadOnExit_PersistsAfterReopen`,
   `UploadOnExit_FallsBackToTrueOnGarbage`; всего 211. `dotnet build` 0/0,
-  `dotnet test` 211/211. Ручная проверка лога и `sync_state` — за пользователем.
+  `dotnet test` 211/211. Проверено пользователем вручную на реальной базе: переключатель
+  работает — при выключенном автовыгрузка при закрытии не выполняется.
 - 19.11.2026 — выпущена `0.7.0` (минорный релиз: переключатель автовыгрузки при закрытии).
   `<Version>` поднят с `0.6.1`, добавлены заметки `docs/releases/0.7.0.md`.
   Схема 16 не менялась, миграций нет, 211 тестов. ZIP `dist/SweetTaste-0.7.0-win-x64.zip`
