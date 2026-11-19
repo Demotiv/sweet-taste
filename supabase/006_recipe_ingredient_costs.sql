@@ -7,8 +7,10 @@
 -- здесь, а не в TypeScript (см. 005_recipe_costs.sql).
 --
 -- Формула повторяет RecipeService.GetRecipeDetails шаг в шаг:
---   avg_price = sum(total_price_kopecks) / sum(quantity_milli)  по закупкам
---   cost      = amount_milli * avg_price
+--   avg_price = sum(total_price_kopecks) / sum(quantity_milli) * 1000 / 100
+--               по закупкам: копейки / тысячные доли единицы -> рубли за единицу
+--   cost      = amount_milli * avg_price / 1000
+--               тысячные доли единицы * рубли за единицу -> рубли
 -- Ингредиент без закупок даёт avg_price = null и вклад 0 — как в desktop.
 --
 -- Строки удалённых ингредиентов не отбрасываются: desktop показывает их
@@ -32,7 +34,7 @@ as
 with avg_prices as (
     select p.user_id,
            p.ingredient_id,
-           sum(p.total_price_kopecks)::numeric / sum(p.quantity_milli) as avg_price
+           sum(p.total_price_kopecks)::numeric / sum(p.quantity_milli) * 1000 / 100 as avg_price
     from public.purchases p
     group by p.user_id, p.ingredient_id
     having sum(p.quantity_milli) > 0
@@ -45,7 +47,7 @@ select ri.user_id,
        i.name as ingredient_name,
        i.unit as ingredient_unit,
        ap.avg_price,
-       ri.amount_milli * coalesce(ap.avg_price, 0) as cost
+       ri.amount_milli * coalesce(ap.avg_price, 0) / 1000 as cost
 from public.recipe_ingredients ri
 join public.ingredients i
     on i.user_id = ri.user_id

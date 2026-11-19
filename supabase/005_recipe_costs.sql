@@ -8,9 +8,12 @@
 -- одним SQL-объектом, и все читатели берут готовое число.
 --
 -- Формула повторяет RecipeService (desktop) шаг в шаг:
---   avg_price     = sum(total_price_kopecks) / sum(quantity_milli)  по закупкам
---   batch_cost    = sum(amount_milli * avg_price)                   по составу
---   cost_per_unit = batch_cost / output_quantity_milli
+--   avg_price     = sum(total_price_kopecks) / sum(quantity_milli) * 1000 / 100
+--                   по закупкам: копейки / тысячные доли единицы -> рубли за единицу
+--   batch_cost    = sum(amount_milli * avg_price) / 1000            по составу
+--                   тысячные доли единицы * рубли за единицу -> рубли
+--   cost_per_unit = batch_cost / output_quantity_milli * 1000
+--                   рубли / тысячные доли единицы -> рубли за единицу
 --   price_per_unit = ceil_по_единице(cost_per_unit * (1 + markup_percent/100))
 --
 -- Округление цены за единицу (RecipeUnits.RoundPricePerUnit): для «г» — вверх
@@ -38,7 +41,7 @@ as
 with avg_prices as (
     select p.user_id,
            p.ingredient_id,
-           sum(p.total_price_kopecks)::numeric / sum(p.quantity_milli) as avg_price
+           sum(p.total_price_kopecks)::numeric / sum(p.quantity_milli) * 1000 / 100 as avg_price
     from public.purchases p
     group by p.user_id, p.ingredient_id
     having sum(p.quantity_milli) > 0
@@ -46,7 +49,7 @@ with avg_prices as (
 batch as (
     select ri.user_id,
            ri.recipe_id,
-           sum(ri.amount_milli * coalesce(ap.avg_price, 0)) as batch_cost
+           sum(ri.amount_milli * coalesce(ap.avg_price, 0)) / 1000 as batch_cost
     from public.recipe_ingredients ri
     left join avg_prices ap
         on ap.user_id = ri.user_id
@@ -63,7 +66,7 @@ unit_cost as (
            r.markup_percent,
            r.updated_at,
            coalesce(b.batch_cost, 0) as batch_cost,
-           coalesce(b.batch_cost, 0) / r.output_quantity_milli as cost_per_unit
+           coalesce(b.batch_cost, 0) / r.output_quantity_milli * 1000 as cost_per_unit
     from public.recipes r
     left join batch b
         on b.user_id = r.user_id
