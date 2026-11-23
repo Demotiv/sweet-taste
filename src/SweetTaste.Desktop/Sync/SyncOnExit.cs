@@ -51,7 +51,7 @@ internal static class SyncOnExit
             // и фоновая задача не успеет дописать данные. Работа идёт в пуле потоков:
             // продолжения await внутри UploadAsync не должны возвращаться в UI-поток,
             // который здесь заблокирован, иначе закрытие зависает навсегда.
-            Task.Run(() => UploadAsync(database, auth, sync, sessions, session))
+            Task.Run(() => UploadAsync(database, auth, sync, sessions, settings, session))
                 .GetAwaiter()
                 .GetResult();
         }
@@ -70,6 +70,7 @@ internal static class SyncOnExit
         SupabaseAuthClient auth,
         SyncService sync,
         ISessionStore sessions,
+        SettingsService settings,
         AuthSession session)
     {
         using var cancellation = new CancellationTokenSource(Timeout);
@@ -85,10 +86,26 @@ internal static class SyncOnExit
         var snapshot = new SnapshotExporter(database).Export(DateTimeOffset.UtcNow);
         Log($"снапшот собран: {snapshot.TotalRows} строк");
 
+        // Пустую базу не выгружаем, даже не спрашивая облако: она стёрла бы его целиком.
+        var cloud = snapshot.TotalRows == 0
+            ? null
+            : await sync.ReadCloudStateAsync(session, cancellation.Token);
+
+        var skipReason = ExitUploadGuard.Check(snapshot.TotalRows, cloud, settings.CloudSnapshotSeenAt);
+        if (skipReason is not null)
+        {
+            settings.ExitUploadSkipReason = skipReason;
+            Log("выгрузка пропущена: " + skipReason);
+            return;
+        }
+
         var result = await sync.UploadWithArchiveAsync(
             snapshot,
             session,
             cancellationToken: cancellation.Token);
+
+        settings.CloudSnapshotSeenAt = snapshot.TakenAt;
+        settings.ExitUploadSkipReason = string.Empty;
 
         Log(result.Archive.Archived
             ? $"архив: сохранён ({result.Archive.TotalRows} строк)"

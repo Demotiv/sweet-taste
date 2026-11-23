@@ -442,6 +442,14 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         SignedInEmail = session.Email;
         IsSignedIn = true;
 
+        // Пропуск выгрузки при закрытии иначе виден только в sync.log.
+        var skipped = _settings.ExitUploadSkipReason;
+        if (skipped.Length > 0)
+        {
+            SyncMessage = "При последнем закрытии данные не выгружены в облако: " + skipped + ".";
+            HasSyncMessage = true;
+        }
+
         // Строки «на этом компьютере / в облаке» подтягиваются следом: облако
         // читается по сети, и открытие страницы не должно ждать ответа.
         _ = RefreshDataMomentsAsync();
@@ -593,6 +601,8 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
         try
         {
             var result = await _sync.UploadWithArchiveAsync(snapshot, session, ArchiveKeep);
+            _settings.CloudSnapshotSeenAt = snapshot.TakenAt;
+            _settings.ExitUploadSkipReason = string.Empty;
             var rows = result.Upload.TotalRows;
             var uploaded = $"Выгружено {rows} {Formats.Plural(rows, "строка", "строки", "строк")}.";
             var outcome = ArchiveOutcome(result.Archive);
@@ -747,6 +757,10 @@ public sealed partial class SettingsViewModel : ViewModelBase, IFormPage
 
             var backup = _settings.CreateBackupNow();
             var imported = new SnapshotImporter(_settings.Database).Import(snapshot);
+
+            // Метка снапшота — из sync_state облака: теперь этот компьютер с ним в согласии.
+            _settings.CloudSnapshotSeenAt = snapshot.TakenAt;
+            _settings.ExitUploadSkipReason = string.Empty;
 
             SyncMessage = backup is null
                 ? $"Данные из облака загружены: {imported} " +

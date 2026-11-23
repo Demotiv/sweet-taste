@@ -134,24 +134,62 @@ public sealed class SyncService : IDisposable
         };
     }
 
+    /// <summary>Сколько строк просить за один запрос при скачивании таблицы.</summary>
+    /// <remarks>
+    /// Supabase по умолчанию отдаёт не больше 1000 строк на запрос (max rows),
+    /// и лишнее молча отрезает. Поэтому таблица читается страницами, пока сервер
+    /// не вернёт пустую страницу: так чтение верно и при меньшем лимите сервера.
+    /// </remarks>
+    public const int DownloadPageSize = 1000;
+
     /// <summary>
     /// Читает снапшот пользователя из облака. Требует действующей сессии.
     /// </summary>
     /// <remarks>
-    /// Чтение идёт по одной таблице в порядке <see cref="SnapshotRows.LoadOrder"/>.
-    /// RLS отдаёт только строки текущего пользователя, поэтому фильтр в запросе
-    /// не нужен. Пустое облако — это снапшот без строк, а не ошибка.
+    /// Сначала читается <c>sync_state</c>, затем таблицы по одной в порядке
+    /// <see cref="SnapshotRows.LoadOrder"/>, каждая страницами по
+    /// <see cref="DownloadPageSize"/>. RLS отдаёт только строки текущего
+    /// пользователя, поэтому фильтр в запросе не нужен. Пустое облако — это
+    /// снапшот без строк, а не ошибка.
+    /// <para>
+    /// Число строк каждой таблицы сверяется с <c>sync_state.row_counts</c>: неполный
+    /// снапшот, заменивший бы локальную базу, хуже ошибки. Расхождение бывает и
+    /// когда другой компьютер выгружает данные прямо во время чтения — тогда
+    /// помогает повтор. Метка времени снапшота берётся из <c>sync_state</c>: по ней
+    /// выгрузка при закрытии узнаёт, с какой версией облака этот компьютер в согласии.
+    /// </para>
     /// </remarks>
+    /// <exception cref="SyncException">
+    /// Облако вернуло не столько строк, сколько записано в <c>sync_state</c>.
+    /// </exception>
     public async Task<SyncSnapshot> DownloadAsync(
         AuthSession session,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(session);
 
+        var state = await ReadCloudStateAsync(session, cancellationToken);
+
         var tables = new Dictionary<string, IReadOnlyList<Dictionary<string, JsonElement>>>();
         foreach (var table in SnapshotRows.LoadOrder)
         {
-            tables[table] = await SelectAsync($"{table}?select=*", session, cancellationToken);
+            tables[table] = await SelectAllPagesAsync(table, session, cancellationToken);
+        }
+
+        if (state is not null)
+        {
+            foreach (var table in SnapshotRows.LoadOrder)
+            {
+                if (state.RowCounts.TryGetValue(table, out var expected) && tables[table].Count != expected)
+                {
+                    throw new SyncException(
+                        $"Облако вернуло не все строки таблицы «{table}»: {tables[table].Count} из {expected}. " +
+                        "Данные на этом компьютере не изменены. Повторите загрузку через минуту.",
+                        table);
+                }
+            }
+
+            return SnapshotReader.Read(tables, state.TakenAt);
         }
 
         return SnapshotReader.Read(tables, DateTimeOffset.UtcNow);
@@ -336,6 +374,32 @@ public sealed class SyncService : IDisposable
         }
 
         return SnapshotReader.ParseRows(body, table);
+    }
+
+    /// <summary>Читает таблицу целиком страницами, пока сервер не вернёт пустую.</summary>
+    private async Task<IReadOnlyList<Dictionary<string, JsonElement>>> SelectAllPagesAsync(
+        string table,
+        AuthSession session,
+        CancellationToken cancellationToken)
+    {
+        // Без устойчивого порядка страницы могут пересекаться или пропускать строки.
+        var order = table == SyncTables.RecipeIngredients ? "recipe_id,ingredient_id" : "id";
+        var rows = new List<Dictionary<string, JsonElement>>();
+
+        while (true)
+        {
+            var page = await SelectAsync(
+                $"{table}?select=*&order={order}&limit={DownloadPageSize}&offset={rows.Count}",
+                session,
+                cancellationToken);
+
+            if (page.Count == 0)
+            {
+                return rows;
+            }
+
+            rows.AddRange(page);
+        }
     }
 
     private async Task DeleteAllAsync(AuthSession session, CancellationToken cancellationToken)

@@ -18,6 +18,8 @@ public sealed class SettingsService
     private const string UnitKey = "default_recipe_unit";
     private const string ScaleKey = "ui_scale_percent";
     private const string UploadOnExitKey = "sync_upload_on_exit";
+    private const string CloudSnapshotSeenKey = "sync_cloud_snapshot_at";
+    private const string ExitUploadSkipKey = "sync_exit_upload_skipped";
     private const int DefaultRetentionDays = 14;
 
     private readonly AppDatabase _database;
@@ -121,6 +123,42 @@ public sealed class SettingsService
     {
         get => ParseBool(Get(UploadOnExitKey, "1"), true);
         set => Set(UploadOnExitKey, value ? "1" : "0");
+    }
+
+    /// <summary>
+    /// Метка снапшота в облаке (<c>sync_state.last_snapshot_at</c>), с которым этот
+    /// компьютер последний раз был в согласии: он его выгрузил или скачал.
+    /// null — компьютер ещё ни разу не обменивался данными с облаком.
+    /// </summary>
+    /// <remarks>
+    /// По ней выгрузка при закрытии понимает, не выгрузил ли с тех пор данные другой
+    /// компьютер: тогда тихая замена облака стёрла бы чужие правки.
+    /// </remarks>
+    public DateTimeOffset? CloudSnapshotSeenAt
+    {
+        get => DateTimeOffset.TryParse(
+            Get(CloudSnapshotSeenKey, string.Empty),
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var moment)
+            ? moment
+            : null;
+        set => Set(
+            CloudSnapshotSeenKey,
+            value?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture) ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Почему при последнем закрытии данные не ушли в облако; пусто — не пропускались.
+    /// </summary>
+    /// <remarks>
+    /// Журнал sync.log никто не читает, поэтому причина показывается в настройках
+    /// и сбрасывается после следующей удачной выгрузки или загрузки.
+    /// </remarks>
+    public string ExitUploadSkipReason
+    {
+        get => Get(ExitUploadSkipKey, string.Empty);
+        set => Set(ExitUploadSkipKey, value ?? string.Empty);
     }
 
     /// <summary>Когда данные последний раз менялись на этом устройстве; null — ещё не менялись.</summary>

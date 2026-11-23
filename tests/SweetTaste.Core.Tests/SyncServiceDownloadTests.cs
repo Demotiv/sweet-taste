@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using SweetTaste.Core.Domain;
 using SweetTaste.Core.Services;
 using SweetTaste.Core.Sync;
@@ -40,6 +41,8 @@ public class SyncServiceDownloadTests
 
         var tables = handler.Requests
             .Select(r => r.Url.Split('/').Last().Split('?')[0])
+            .Where(table => table != "sync_state")
+            .Distinct()
             .ToList();
 
         Assert.Equal(SnapshotRows.LoadOrder, tables);
@@ -56,7 +59,7 @@ public class SyncServiceDownloadTests
         Assert.All(handler.Requests, request =>
         {
             Assert.Equal(HttpMethod.Get, request.Method);
-            Assert.EndsWith("?select=*", request.Url);
+            Assert.Contains("?select=", request.Url);
             Assert.Equal("sb_publishable_test", request.ApiKey);
             Assert.Equal("Bearer access-1", request.Authorization);
         });
@@ -185,7 +188,7 @@ public class SyncServiceDownloadTests
     [Fact]
     public async Task Download_ServerError_NamesTheTable()
     {
-        var handler = new TableHandler { Status = HttpStatusCode.BadRequest };
+        var handler = new TableHandler { FailOn = SyncTables.IngredientCategories };
         using var service = new SyncService(Options, new HttpClient(handler));
 
         var error = await Assert.ThrowsAsync<SyncException>(() => service.DownloadAsync(Session));
@@ -253,6 +256,98 @@ public class SyncServiceDownloadTests
     }
 
 
+    [Theory]
+    [InlineData(2500, 1000)]
+    [InlineData(700, 300)]
+    public async Task Download_ReadsTablesLargerThanServerLimit(int total, int serverMaxRows)
+    {
+        var handler = new TableHandler
+        {
+            MaxRows = serverMaxRows,
+            Rows = new Dictionary<string, string>
+            {
+                [SyncTables.IngredientCategories] = Categories(total),
+                ["sync_state"] = State(new Dictionary<string, int> { [SyncTables.IngredientCategories] = total }),
+            },
+        };
+        using var service = new SyncService(Options, new HttpClient(handler));
+
+        var snapshot = await service.DownloadAsync(Session);
+
+        Assert.Equal(total, snapshot.IngredientCategories.Count);
+        Assert.Equal(total, snapshot.IngredientCategories.Select(c => c.Id).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Download_PagesAreOrderedForStablePaging()
+    {
+        var handler = new TableHandler();
+        using var service = new SyncService(Options, new HttpClient(handler));
+
+        await service.DownloadAsync(Session);
+
+        Assert.All(
+            handler.Requests.Where(r => !r.Url.Contains("/sync_state")),
+            request => Assert.Contains("&order=", request.Url));
+        Assert.Contains(handler.Requests, r =>
+            r.Url.Contains("/recipe_ingredients?") && r.Url.Contains("order=recipe_id,ingredient_id"));
+    }
+
+    [Fact]
+    public async Task Download_FewerRowsThanSyncState_Throws()
+    {
+        var handler = new TableHandler
+        {
+            Rows = new Dictionary<string, string>
+            {
+                [SyncTables.IngredientCategories] = Categories(3),
+                ["sync_state"] = State(new Dictionary<string, int> { [SyncTables.IngredientCategories] = 5 }),
+            },
+        };
+        using var service = new SyncService(Options, new HttpClient(handler));
+
+        var error = await Assert.ThrowsAsync<SyncException>(() => service.DownloadAsync(Session));
+
+        Assert.Equal(SyncTables.IngredientCategories, error.Table);
+        Assert.Contains("3 из 5", error.Message);
+    }
+
+    [Fact]
+    public async Task Download_TakesSnapshotTimeFromSyncState()
+    {
+        var handler = new TableHandler
+        {
+            Rows = new Dictionary<string, string>
+            {
+                [SyncTables.IngredientCategories] = Categories(2),
+                ["sync_state"] = State(new Dictionary<string, int> { [SyncTables.IngredientCategories] = 2 }),
+            },
+        };
+        using var service = new SyncService(Options, new HttpClient(handler));
+
+        var snapshot = await service.DownloadAsync(Session);
+
+        Assert.Equal(new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.Zero).AddTicks(1234560), snapshot.TakenAt);
+    }
+
+    private static string Categories(int count) =>
+        new JsonArray(Enumerable.Range(1, count)
+            .Select(i => (JsonNode)new JsonObject
+            {
+                ["id"] = new Guid(i, 0, 0, new byte[8]).ToString(),
+                ["name"] = $"Категория {i}",
+                ["created_at"] = "2026-11-18T09:00:00.000000+00:00",
+            })
+            .ToArray()).ToJsonString();
+
+    private static string State(Dictionary<string, int> counts) =>
+        new JsonArray(new JsonObject
+        {
+            ["schema_version"] = 15,
+            ["last_snapshot_at"] = "2026-11-20T10:00:00.123456+00:00",
+            ["row_counts"] = JsonSerializer.SerializeToNode(counts),
+        }).ToJsonString();
+
     private sealed record CapturedRequest(
         HttpMethod Method,
         string Url,
@@ -286,13 +381,36 @@ public class SyncServiceDownloadTests
             var table = url.Split('/').Last().Split('?')[0];
             var status = FailOn is not null && table == FailOn ? HttpStatusCode.BadRequest : Status;
             var body = status == Status
-                ? Rows.TryGetValue(table, out var rows) ? rows : "[]"
+                ? Page(Rows.TryGetValue(table, out var rows) ? rows : "[]", request.RequestUri!)
                 : """{"message":"invalid input syntax"}""";
 
             return Task.FromResult(new HttpResponseMessage(status)
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json"),
             });
+        }
+
+        /// <summary>Сколько строк сервер отдаёт за один ответ — как max rows в Supabase.</summary>
+        public int MaxRows { get; init; } = 1000;
+
+        /// <summary>Режет массив по limit/offset, как PostgREST, не больше <see cref="MaxRows"/> строк.</summary>
+        private string Page(string rows, Uri uri)
+        {
+            var query = uri.Query.TrimStart('?')
+                .Split('&', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Split('=', 2))
+                .ToDictionary(part => part[0], part => part.Length > 1 ? part[1] : string.Empty);
+
+            var array = JsonNode.Parse(rows)!.AsArray();
+            var offset = query.TryGetValue("offset", out var o) ? int.Parse(o) : 0;
+            var limit = query.TryGetValue("limit", out var l) ? int.Parse(l) : int.MaxValue;
+            var page = array
+                .Skip(offset)
+                .Take(Math.Min(limit, MaxRows))
+                .Select(node => node!.DeepClone())
+                .ToArray();
+
+            return new JsonArray(page).ToJsonString();
         }
     }
 }
