@@ -52,6 +52,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSettingsActive;
 
+    /// <summary>Окно закрывается и ждёт выгрузку в облако — показывается заставка.</summary>
+    [ObservableProperty]
+    private bool _isExitUploadActive;
+
+    /// <summary>Пользователь не хочет ждать выгрузку при закрытии.</summary>
+    public event Action? ExitUploadSkipRequested;
+
+    [RelayCommand]
+    private void SkipExitUpload() => ExitUploadSkipRequested?.Invoke();
+
     [ObservableProperty]
     private string _brandName = "Sweet Taste";
 

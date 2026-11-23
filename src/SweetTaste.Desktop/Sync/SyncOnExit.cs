@@ -15,6 +15,9 @@ namespace SweetTaste.Desktop.Sync;
 /// Закрытие окна не должно ждать сеть дольше нескольких десятков секунд, поэтому
 /// выгрузка ограничена таймаутом и любые ошибки только пишутся в журнал: локальная
 /// база остаётся источником истины, следующая выгрузка повторит попытку.
+/// Обычное закрытие окна идёт через <see cref="RunAsync"/> (см.
+/// <see cref="ExitUploadController"/>): окно остаётся отзывчивым и показывает ход
+/// выгрузки. Блокирующий <see cref="Run"/> — только запасной путь.
 /// </remarks>
 internal static class SyncOnExit
 {
@@ -23,12 +26,41 @@ internal static class SyncOnExit
     // теперь два (архив и замена), поэтому таймаут поднят с 30 до 45 с.
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(45);
 
+    /// <summary>Есть ли что делать при закрытии: выгрузка включена и есть сессия.</summary>
+    public static bool IsNeeded(SettingsService settings, ISessionStore sessions) =>
+        settings.UploadOnExit && sessions.Load() is not null;
+
+    /// <summary>
+    /// Блокирующая выгрузка — запасной путь, когда окно уже не может ждать:
+    /// выключение Windows и программное завершение (обновление, перезапуск).
+    /// </summary>
     public static void Run(
         AppDatabase database,
         SupabaseAuthClient auth,
         SyncService sync,
         ISessionStore sessions,
         SettingsService settings)
+    {
+        // Ждём выгрузку синхронно: после ShutdownRequested процесс завершится,
+        // и фоновая задача не успеет дописать данные. Работа идёт в пуле потоков:
+        // продолжения await внутри RunAsync не должны возвращаться в UI-поток,
+        // который здесь заблокирован, иначе закрытие зависает навсегда.
+        Task.Run(() => RunAsync(database, auth, sync, sessions, settings, CancellationToken.None))
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    /// <summary>
+    /// Выгрузка при закрытии. Никогда не бросает исключений: всё пишется в журнал.
+    /// </summary>
+    /// <param name="cancellationToken">Отмена пользователем — «Закрыть без выгрузки».</param>
+    public static async Task RunAsync(
+        AppDatabase database,
+        SupabaseAuthClient auth,
+        SyncService sync,
+        ISessionStore sessions,
+        SettingsService settings,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -47,13 +79,11 @@ internal static class SyncOnExit
 
             Log($"сессия загружена: {session.Email}, истекает {session.ExpiresAt:yyyy-MM-dd HH:mm:ss}");
 
-            // Ждём выгрузку синхронно: после ShutdownRequested процесс завершится,
-            // и фоновая задача не успеет дописать данные. Работа идёт в пуле потоков:
-            // продолжения await внутри UploadAsync не должны возвращаться в UI-поток,
-            // который здесь заблокирован, иначе закрытие зависает навсегда.
-            Task.Run(() => UploadAsync(database, auth, sync, sessions, settings, session))
-                .GetAwaiter()
-                .GetResult();
+            await UploadAsync(database, auth, sync, sessions, settings, session, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            Log("выгрузка прервана: закрыто без выгрузки");
         }
         catch (Exception exception)
         {
@@ -71,9 +101,11 @@ internal static class SyncOnExit
         SyncService sync,
         ISessionStore sessions,
         SettingsService settings,
-        AuthSession session)
+        AuthSession session,
+        CancellationToken cancellationToken)
     {
-        using var cancellation = new CancellationTokenSource(Timeout);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellation.CancelAfter(Timeout);
 
         if (session.IsExpired(DateTimeOffset.UtcNow))
         {

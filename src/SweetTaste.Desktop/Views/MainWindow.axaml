@@ -292,6 +292,29 @@
       </Border>
       <ContentControl Grid.Row="2" Content="{Binding CurrentPage}" />
     </Grid>
+
+    <!-- ====== выгрузка в облако при закрытии ====== -->
+    <Grid Grid.ColumnSpan="2"
+          IsVisible="{Binding IsExitUploadActive}"
+          Background="{DynamicResource DimBrush}">
+      <Border Classes="dialog"
+              Width="440"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="dialog-title" Text="Сохраняю данные в облако" />
+          <ProgressBar IsIndeterminate="True" />
+          <TextBlock Classes="secondary"
+                     Text="Окно закроется само, как только выгрузка завершится. Обычно это несколько секунд."
+                     TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Theme="{StaticResource SecondaryButton}"
+                    Content="Закрыть без выгрузки"
+                    Command="{Binding SkipExitUploadCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
   </LayoutTransformControl>
 </Window>

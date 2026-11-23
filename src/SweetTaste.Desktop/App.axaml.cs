@@ -62,8 +62,9 @@ public partial class App : Application
 
             window.Opened += async (_, _) => await viewModel.CheckForUpdatesAsync();
 
-            desktop.ShutdownRequested += (_, _) =>
-                SyncOnExit.Run(database, auth, sync, sessions, settings);
+            var exitUpload = new ExitUploadController(database, auth, sync, sessions, settings, viewModel);
+            window.Closing += exitUpload.OnClosing;
+            desktop.ShutdownRequested += (_, _) => exitUpload.RunBlockingIfPending();
 
             desktop.Exit += (_, _) =>
             {
