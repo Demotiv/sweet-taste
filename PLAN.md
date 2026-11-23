@@ -1343,6 +1343,13 @@ PostgREST в `SyncSnapshot` (uuid, `boolean`, `bytea` в hex, даты), `SyncSe
   не прогонялся (Postgres нет); миграция 007 применена пользователем в панели Supabase,
   вью отдаёт строки (у одного ингредиента цена за единицу во всех строках одна),
   вкладка «Покупки» проверена вручную.
+- 23.11.2026 — веб задеплоен с `c59148d` (вместе с постраничным чтением `bc8ae9e`):
+  деплой `073fddbf`, production `sweet-taste.pages.dev` отдаёт `index-Ch2jk22P.js`.
+  **Поправка к записи от 19.11:** Cloudflare Pages сам от пуша не собирает — проект
+  без Git-интеграции, деплой вручную из `sweet-taste-web`:
+  `npm run build`, затем
+  `npx wrangler pages deploy dist --project-name sweet-taste --branch main --commit-hash <sha>`.
+  Пуш в GitHub без этого на сайт не попадает.
 
 ## 9. Идеи на будущее
 
